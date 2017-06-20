@@ -14,7 +14,7 @@ urgent care setting, or specified towards a specific health condition (like diab
 (https://arxiv.org/pdf/1602.04257.pdf) address methods to approach this problem.  I will likely approach this as a 
 classification problem, with a number of interpretive and predictive models.  The presentation will likely involve
 graphs showing the accuracy, precision and recall of various models, along with comparisons of the usefulness of 
-different attrtibutes.  One possible source of datasets for this work is here:
+different attributes.  One possible source of datasets for this work is here:
 - https://mimic.physionet.org/
 
 ### 2) Identification of anomalies in radiological scan images
