@@ -1,12 +1,12 @@
-Galvanize Capstone Project
+# Galvanize Capstone Project
 
-Drew Erickson
+## Drew Erickson
 
 This repository is for the Galvanize Capstone Project that I will be completing in July 2016 for the Data Science Immersive, Cohort 42.
 
-Capstone Project Proposals:
+## Capstone Project Proposals:
 
-1) Detection of patients at risk for hospital readmission
+### 1) Detection of patients at risk for hospital readmission
  
 Hospital readmissions are a costly portion of hospital and insurance costs, so detection of patients at risk for 
 readmission can allow preventative interventions to be taken.  This work can be generalized to any readmission in an
@@ -15,9 +15,9 @@ urgent care setting, or specified towards a specific health condition (like diab
 classification problem, with a number of interpretive and predictive models.  The presentation will likely involve
 graphs showing the accuracy, precision and recall of various models, along with comparisons of the usefulness of 
 different attrtibutes.  One possible source of datasets for this work is here:
-https://mimic.physionet.org/
+- https://mimic.physionet.org/
 
-2) Identification of anomalies in radiological scan images
+### 2) Identification of anomalies in radiological scan images
 
 Radiological data is growing in scale, but the primary source of analysis is human.  Teaching machines to detect
 anomalies in these images will reduce the time to appropriate treatment.  This problem can have a number of specific
@@ -28,11 +28,11 @@ primarily an image classification problem.  Some possible ways to approach this 
 involve more recent advances in deep learning, as seen discussed here (https://rubinlab.stanford.edu/publications).  
 The presentation will involve graphs explaining the model selection and showing the effectiveness of the model.  Some 
 possible datasets for this work are here:
-http://www.cancerimagingarchive.net/
-http://langlotzlab.stanford.edu/projects/medical-image-net/
-http://www.cardiacatlas.org/studies/sunnybrook-cardiac-data/
+- http://www.cancerimagingarchive.net/
+- http://langlotzlab.stanford.edu/projects/medical-image-net/
+- http://www.cardiacatlas.org/studies/sunnybrook-cardiac-data/
  
-3) Identifying health issues through wearable-collected biometrics
+### 3) Identifying health issues through wearable-collected biometrics
  
 Wearable devices and mobile phone apps can collect data through common inputs (accelerometers, microphone) that
 can be used to detect health issues before they lead to a hospital visit, allowing users to intervene early and improve
