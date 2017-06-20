@@ -1,6 +1,6 @@
 # Galvanize Capstone Project
 
-## Drew Erickson
+## Conducted by: Drew Erickson
 
 This repository is for the Galvanize Capstone Project that I will be completing in July 2016 for the Data Science Immersive, Cohort 42.
 
