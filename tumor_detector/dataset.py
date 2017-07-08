@@ -36,8 +36,7 @@ def load_nifti_file_local(file_path):
     """
 
     image = nib.load(file_path)
-    data = image.get_data()
-    return data
+    return image.get_data()
 
 
 def save_nifti_file_S3(data, file_path, bucket):
