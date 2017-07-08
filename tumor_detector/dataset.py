@@ -15,21 +15,6 @@ def connect_to_bucket(bucket_name):
     return conn.get_bucket(bucket_name)
 
 
-def load_nifti_file(key, local=True, all_dims=True):
-    """
-    Loads a NIfTI file at the given key.  Allows local or remote loading.  Reduces 3rd dimension if all_dims is False.
-    Returns a 2D or 3D numpy array.
-    """
-
-    if local:
-        data = load_nifti_file_local(key)
-    else:
-        data = load_nifti_file_S3(key)
-    if not all_dims:
-        data = data[:, :, 80]
-    return data
-
-
 def load_nifti_file_S3(key):
     """
     Loads a NIfTI file from S3 at the given key.
@@ -53,6 +38,27 @@ def load_nifti_file_local(file_path):
     image = nib.load(file_path)
     data = image.get_data()
     return data
+
+
+def save_nifti_file_S3(data, file_path, bucket):
+    """
+    Saves a NIfTI file to S3 at the given key.
+    """
+
+    key = bucket.new_key(file_path)
+    save_nifti_file_local(data, "temp.nii.gz")
+    with open("temp.nii.gz", "rb") as f:
+        key.set_contents_from_file(f)
+    os.remove("temp.nii.gz")
+
+
+def save_nifti_file_local(data, file_path):
+    """
+    Saves a NIfTI file to a local folder at the given key (full path).
+    """
+
+    image = nib.Nifti1Image(data, affine=np.eye(4))
+    nib.save(image, file_path)
 
 
 def category_pass(data, multi_cat=True):
@@ -82,15 +88,27 @@ class DataSet(object):
 
     def __init__(self, bucket_name=None, prefix_folder=None, local_path=None):
 
-        self.bucket = connect_to_bucket(bucket_name) if bucket_name else None
-        self.prefix_folder = prefix_folder
-        self.local_path = local_path
+        self.X_file_name = "t2.nii.gz"  # only one channel to start
+        self.y_file_name = "seg.nii.gz"
+        self.y_predict_file_name = "predict.nii.gz"
 
+        if bucket_name and prefix_folder:
+            self.bucket = connect_to_bucket(bucket_name) if bucket_name else None
+            self.prefix_folder = prefix_folder
+            self.local = False
+        elif local_path:
+            self.local_path = local_path
+            self.local = True
+
+        self.X_keys = None
+        self.y_keys = None
         self.X = []
         self.y = []
         self.index_train = None
 
-    def load_dataset(self, local=True, all_dims=True, multi_cat=True):
+        self.y_predict = []
+
+    def load_dataset(self, all_dims=True, multi_cat=True):
         """
         Loads X and y datasets with specified parameters.
         local: If True, load data from local_path. If False, load from S3.
@@ -98,25 +116,21 @@ class DataSet(object):
         multi_cat: If True, keep all categories in y.  If False, set all categories to 1.
         """
 
-        X_file_name = "t1.nii.gz"  # only one channel to start
-        y_file_name = "seg.nii.gz"
-        X_keys, y_keys = self.get_keys(X_file_name, y_file_name, local=local)
+        self.get_keys(self.X_file_name, self.y_file_name)
 
         self.X = np.stack(
-            [np.expand_dims(load_nifti_file(key,
-                                            local=local,
-                                            all_dims=all_dims),
-                            axis=-1) for key in X_keys],
+            [np.expand_dims(self.load_nifti_file(key,
+                                                 all_dims=all_dims),
+                            axis=-1) for key in self.X_keys],
             axis=0)
         self.y = np.stack(
-            [np.expand_dims(category_pass(load_nifti_file(key,
-                                                          local=local,
-                                                          all_dims=all_dims),
+            [np.expand_dims(category_pass(self.load_nifti_file(key,
+                                                               all_dims=all_dims),
                                           multi_cat=multi_cat),
-                            axis=-1) for key in y_keys],
+                            axis=-1) for key in self.y_keys],
             axis=0)
 
-    def get_keys(self, X_file_name, y_file_name, local=True):
+    def get_keys(self, X_file_name, y_file_name):
         """
         Gets 'keys' based on X and y file names.
         local: If True, gets local file paths as 'keys'.  If False, get S3 bucket keys.
@@ -124,7 +138,7 @@ class DataSet(object):
 
         X_keys = []
         y_keys = []
-        if local:
+        if self.local:
             for root, dirs, files in os.walk(self.local_path):
                 for file_name in files:
                     if file_name == X_file_name:
@@ -138,7 +152,47 @@ class DataSet(object):
                 elif y_file_name in key.name:
                     y_keys.append(key)
 
-        return X_keys[0:3], y_keys[0:3]  # truncated for testing
+        self.X_keys = X_keys[0:3]
+        self.y_keys = y_keys[0:3]  # truncated for testing
+
+    def load_nifti_file(self, key, all_dims=True):
+        """
+        Loads a NIfTI file at the given key.  Allows local or remote loading.
+        Reduces 3rd dimension if all_dims is False.
+        Returns a 2D or 3D numpy array.
+        """
+
+        if self.local:
+            data = load_nifti_file_local(key)
+        else:
+            data = load_nifti_file_S3(key)
+        if not all_dims:
+            data = data[:, :, 80]  # selected z plane 80 for testing
+        return data
+
+    def save_nifti_file(self, data, file_path):
+        """
+        Save NIfTI data to file (local or S3).
+        """
+
+        if self.local:
+            save_nifti_file_local(data, file_path)
+        else:
+            save_nifti_file_S3(data, file_path, self.bucket)
+
+    def save_y_predict(self, model):
+        """
+        Save the y prediction data to files (local or S3).
+        """
+        if len(self.y_predict) == 0:
+            self.y_predict = self.run_predict(model)
+        # save predict data to new files
+
+    def run_predict(self, model):
+        """
+        Save the y prediction data to files (local or S3).
+        """
+        return model.predict(self.X)
 
     def test_train_split(self):
         """
@@ -148,15 +202,17 @@ class DataSet(object):
 
 
 if __name__ == '__main__':
-    ds = DataSet(local_path=config.local_path)
+#    ds = DataSet(local_path=config.local_path)
+#    ds.load_dataset()
+#    ds.load_dataset(all_dims=False)
+#    ds.load_dataset(multi_cat=False)
+#    ds.load_dataset(all_dims=False, multi_cat=False)
+#    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].split("/")[:-1]) + "/predict.nii.gz")
+    ds = DataSet(config.bucket_name, "train")
     ds.load_dataset()
-    #    ds.load_dataset(all_dims=False)
-    #    ds.load_dataset(multi_cat=False)
-    #    ds.load_dataset(all_dims=False, multi_cat=False)
-    #    ds = DataSet(config.bucket_name, "train")
-    #    ds.load_dataset(local=False)
     #    ds.load_dataset(local=False, all_dims=False)
     #    ds.load_dataset(local=False, multi_cat=False)
-    #    ds.load_dataset(local=False, all_dims=False, multi_cat=False)
+#    ds.load_dataset(all_dims=False, multi_cat=False)
+    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].name.split("/")[:-1]) + "/predict.nii.gz")
 
     print("Complete")
