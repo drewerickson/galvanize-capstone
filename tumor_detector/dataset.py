@@ -60,16 +60,35 @@ def save_nifti_file_local(data, file_path):
     nib.save(image, file_path)
 
 
+def contrast_pass(data, multi_cat=True):
+    """
+    Combines contrasts together in a single numpy array.
+    If only one data element, returns an array with an expanded dimension.
+    Takes in data_list, a list of numpy arrays.
+    Returns a numpy array.
+    """
+    new_data = np.array(data)
+    #
+    return new_data
+
+
 def category_pass(data, multi_cat=True):
     """
+    Splits label into multiple categories.
     If multi_cat is True, runs a pass to reduce all nonzero values to 1 (for a single category).
     Takes in data, a numpy array.
     Returns a numpy array.
     """
 
+    data_list = []
     if not multi_cat:
-        data[data > 0] = 1
-    return data
+        data_list.append((data != 0)*1)
+    else:
+        data_list.extend([(data == 1)*1,
+                          (data == 2)*1,
+                          (data == 3)*1,
+                          (data == 4)*1])
+    return np.stack(data_list, axis=-1)
 
 
 class DataSet(object):
@@ -123,10 +142,9 @@ class DataSet(object):
                             axis=-1) for key in self.X_keys],
             axis=0)
         self.y = np.stack(
-            [np.expand_dims(category_pass(self.load_nifti_file(key,
-                                                               all_dims=all_dims),
-                                          multi_cat=multi_cat),
-                            axis=-1) for key in self.y_keys],
+            [category_pass(self.load_nifti_file(key,
+                                                all_dims=all_dims),
+                           multi_cat=multi_cat) for key in self.y_keys],
             axis=0)
 
     def get_keys(self, X_file_name, y_file_name):
@@ -151,8 +169,8 @@ class DataSet(object):
                 elif y_file_name in key.name:
                     y_keys.append(key)
 
-        self.X_keys = X_keys[0:3]
-        self.y_keys = y_keys[0:3]  # truncated for testing
+        self.X_keys = X_keys[0:100]
+        self.y_keys = y_keys[0:100]  # truncated for testing
 
     def load_nifti_file(self, key, all_dims=True):
         """
@@ -185,13 +203,18 @@ class DataSet(object):
         """
         if len(self.y_predict) == 0:
             self.y_predict = self.run_predict(model)
-        # save predict data to new files
+        for i, y_key in enumerate(self.y_keys):
+            if self.local:
+                y_predict_file_path = "/".join(y_key.split("/")[:-1]) + "/" + self.y_predict_file_name
+            else:
+                y_predict_file_path = "/".join(y_key.name.split("/")[:-1]) + "/" + self.y_predict_file_name
+            self.save_nifti_file(self.y_predict[i], y_predict_file_path)
 
     def run_predict(self, model):
         """
         Save the y prediction data to files (local or S3).
         """
-        return model.predict(self.X)
+        return model.predict_classes(self.X)
 
     def test_train_split(self):
         """
@@ -201,17 +224,17 @@ class DataSet(object):
 
 
 if __name__ == '__main__':
-#    ds = DataSet(local_path=config.local_path)
+    ds = DataSet(local_path=config.local_path)
 #    ds.load_dataset()
 #    ds.load_dataset(all_dims=False)
 #    ds.load_dataset(multi_cat=False)
-#    ds.load_dataset(all_dims=False, multi_cat=False)
-#    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].split("/")[:-1]) + "/predict.nii.gz")
-    ds = DataSet(config.bucket_name, "train")
-    ds.load_dataset()
+    ds.load_dataset(all_dims=False, multi_cat=False)
+    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].split("/")[:-1]) + "/predict.nii.gz")
+#    ds = DataSet(config.bucket_name, "train")
+#    ds.load_dataset()
     #    ds.load_dataset(local=False, all_dims=False)
     #    ds.load_dataset(local=False, multi_cat=False)
 #    ds.load_dataset(all_dims=False, multi_cat=False)
-    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].name.split("/")[:-1]) + "/predict.nii.gz")
+#    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].name.split("/")[:-1]) + "/predict.nii.gz")
 
     print("Complete")
