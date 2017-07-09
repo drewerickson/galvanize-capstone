@@ -106,7 +106,7 @@ class DataSet(object):
 
     def __init__(self, bucket_name=None, prefix_folder=None, local_path=None):
 
-        self.X_file_name = "t2.nii.gz"  # only one channel to start
+        self.X_file_names = ["t1.nii.gz", "t2.nii.gz", "t1ce.nii.gz", "flair.nii.gz"]
         self.y_file_name = "seg.nii.gz"
         self.y_predict_file_name = "predict.nii.gz"
 
@@ -134,43 +134,51 @@ class DataSet(object):
         multi_cat: If True, keep all categories in y.  If False, set all categories to 1.
         """
 
-        self.get_keys(self.X_file_name, self.y_file_name)
+        self.get_keys()
 
-        self.X = np.stack(
-            [np.expand_dims(self.load_nifti_file(key,
-                                                 all_dims=all_dims),
-                            axis=-1) for key in self.X_keys],
-            axis=0)
-        self.y = np.stack(
-            [category_pass(self.load_nifti_file(key,
-                                                all_dims=all_dims),
-                           multi_cat=multi_cat) for key in self.y_keys],
-            axis=0)
+        self.get_X(all_dims)
+        self.get_y(all_dims, multi_cat)
 
-    def get_keys(self, X_file_name, y_file_name):
+    def get_keys(self):
         """
         Gets 'keys' based on X and y file names.
         local: If True, gets local file paths as 'keys'.  If False, get S3 bucket keys.
         """
 
-        X_keys = []
+        X_keys = [[] for _ in self.X_file_names]
         y_keys = []
         if self.local:
             for root, dirs, files in os.walk(self.local_path):
                 for file_name in files:
-                    if file_name == X_file_name:
-                        X_keys.append(os.path.join(root, file_name))
-                    elif file_name == y_file_name:
+                    if file_name in self.X_file_names:
+                        X_keys[self.X_file_names.index(file_name)].append(os.path.join(root, file_name))
+                    elif file_name == self.y_file_name:
                         y_keys.append(os.path.join(root, file_name))
         else:
             for key in self.bucket.list(prefix=self.prefix_folder):
-                if X_file_name in key.name:
-                    X_keys.append(key)
-                elif y_file_name in key.name:
+                file_name = key.name.split("/")[-1]
+                if file_name in self.X_file_names:
+                    X_keys[self.X_file_names.index(file_name)].append(key)
+                elif self.y_file_name in key.name:
                     y_keys.append(key)
 
-        self.X_keys = X_keys[0:100]
-        self.y_keys = y_keys[0:100]  # truncated for testing
+        self.X_keys = [[subkeys[4]] for subkeys in X_keys]
+        self.y_keys = [y_keys[4]]  # truncated for testing
+
+    def get_X(self, all_dims):
+        X = []
+        for index_row in range(len(self.X_keys[0])):
+            X_row = []
+            for index_contrast in range(len(self.X_keys)):
+                X_row.append(self.load_nifti_file(self.X_keys[index_contrast][index_row], all_dims=all_dims))
+            X.append(np.stack(X_row, axis=-1))
+        self.X = np.stack(X, axis=0)
+
+    def get_y(self, all_dims, multi_cat):
+        self.y = np.stack([category_pass(self.load_nifti_file(key,
+                                                              all_dims=all_dims),
+                                         multi_cat=multi_cat) for key in self.y_keys],
+                          axis=0)
 
     def load_nifti_file(self, key, all_dims=True):
         """
@@ -184,7 +192,7 @@ class DataSet(object):
         else:
             data = load_nifti_file_S3(key)
         if not all_dims:
-            data = data[:, :, 80]  # selected z plane 80 for testing
+            data = data[40:200, 45:205, 80]  # crop close to brain, selected z plane 80 for testing
         return data
 
     def save_nifti_file(self, data, file_path):
@@ -214,7 +222,7 @@ class DataSet(object):
         """
         Save the y prediction data to files (local or S3).
         """
-        return model.predict_classes(self.X)
+        return model.predict(self.X)
 
     def test_train_split(self):
         """
