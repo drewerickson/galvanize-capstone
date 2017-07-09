@@ -138,6 +138,7 @@ class DataSet(object):
 
         self.get_X(all_dims)
         self.get_y(all_dims, multi_cat)
+        self.mask_nz()
 
     def get_keys(self):
         """
@@ -179,6 +180,23 @@ class DataSet(object):
                                                               all_dims=all_dims),
                                          multi_cat=multi_cat) for key in self.y_keys],
                           axis=0)
+
+    def mask_nz(self):
+        """
+        For each X, create an exclusive mask for all voxels that have all nonzero X values.
+        Set the mask to zero for all y values, and add the mask as another y label.
+        The result will be a label for all nonzero, non categorized values.
+        """
+        y_update = []
+        for i, X_entry in enumerate(self.X):
+            y_nz = (X_entry[..., 0] != 1) * 1
+            for index_scan in range(X_entry.shape[-1]):
+                y_nz *= ((X_entry[..., index_scan] != 0) * 1)
+            for index_cat in range(self.y[i].shape[-1]):
+                y_nz *= ((self.y[i][..., index_cat] == 0) * 1)
+            y_nz = np.expand_dims(y_nz, axis=-1)
+            y_update.append(np.append(self.y[i], y_nz, axis=-1))
+        self.y = np.stack(y_update, axis=0)
 
     def load_nifti_file(self, key, all_dims=True):
         """
@@ -237,7 +255,9 @@ if __name__ == '__main__':
 #    ds.load_dataset(all_dims=False)
 #    ds.load_dataset(multi_cat=False)
     ds.load_dataset(all_dims=False, multi_cat=False)
-    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].split("/")[:-1]) + "/predict.nii.gz")
+    save_path = "/".join(ds.y_keys[0].split("/")[:-1])
+    ds.save_nifti_file(ds.X[0], save_path + "/X.nii.gz")
+    ds.save_nifti_file(ds.y[0], save_path + "/y.nii.gz")
 #    ds = DataSet(config.bucket_name, "train")
 #    ds.load_dataset()
     #    ds.load_dataset(local=False, all_dims=False)
