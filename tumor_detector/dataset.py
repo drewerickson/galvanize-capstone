@@ -140,6 +140,8 @@ class DataSet(object):
         self.get_y(all_dims, multi_cat)
         self.mask_nz()
 
+        self.train_test_split()
+
     def get_keys(self):
         """
         Gets 'keys' based on X and y file names.
@@ -163,8 +165,8 @@ class DataSet(object):
                 elif self.y_file_name in key.name:
                     y_keys.append(key)
 
-        self.X_keys = [[subkeys[4]] for subkeys in X_keys]
-        self.y_keys = [y_keys[4]]  # truncated for testing
+        self.X_keys = [subkeys[:10] for subkeys in X_keys]
+        self.y_keys = y_keys[:10]  # truncated for testing
 
     def get_X(self, all_dims):
         X = []
@@ -210,7 +212,9 @@ class DataSet(object):
         else:
             data = load_nifti_file_S3(key)
         if not all_dims:
-            data = data[40:200, 45:205, 80]  # crop close to brain, selected z plane 80 for testing
+            data = data[40:200, 41:217, 80]  # crop close to brain, selected z plane 80 for testing
+        else:
+            data = data[40:200, 41:217, 1:145]  # crop with some zero buffer
         return data
 
     def save_nifti_file(self, data, file_path):
@@ -242,11 +246,25 @@ class DataSet(object):
         """
         return model.predict(self.X)
 
-    def test_train_split(self):
+    def train_test_split(self, train_pct=0.8):
         """
-        Future method for selecting a subset of X and y for a test / train split.
+        Creates a random set of indices for selecting a subset of X and y for a train / test split.
         """
-        pass
+        self.index_train = np.random.choice(len(self.X), int(np.round(len(self.X)*train_pct)), replace=False)
+
+    def X_train(self):
+        return self.X[self.index_train]
+
+    def X_test(self):
+        index_test = [i for i in np.arange(len(self.X)) if i not in self.index_train]
+        return self.X[index_test]
+
+    def y_train(self):
+        return self.y[self.index_train]
+
+    def y_test(self):
+        index_test = [i for i in np.arange(len(self.X)) if i not in self.index_train]
+        return self.y[index_test]
 
 
 if __name__ == '__main__':
@@ -254,10 +272,11 @@ if __name__ == '__main__':
 #    ds.load_dataset()
 #    ds.load_dataset(all_dims=False)
 #    ds.load_dataset(multi_cat=False)
-    ds.load_dataset(all_dims=False, multi_cat=False)
-    save_path = "/".join(ds.y_keys[0].split("/")[:-1])
-    ds.save_nifti_file(ds.X[0], save_path + "/X.nii.gz")
-    ds.save_nifti_file(ds.y[0], save_path + "/y.nii.gz")
+    ds.load_dataset(all_dims=False)
+    for i in range(len(ds.X)):
+        save_path = "/".join(ds.y_keys[i].split("/")[:-1])
+        ds.save_nifti_file(ds.X[i], save_path + "/X.nii.gz")
+        ds.save_nifti_file(ds.y[i], save_path + "/y.nii.gz")
 #    ds = DataSet(config.bucket_name, "train")
 #    ds.load_dataset()
     #    ds.load_dataset(local=False, all_dims=False)
