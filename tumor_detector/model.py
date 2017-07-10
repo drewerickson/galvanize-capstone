@@ -1,110 +1,152 @@
 import config
 from dataset import DataSet
-from keras.layers import Dense, Activation
+from keras.layers import Dense, Activation, Input, concatenate, BatchNormalization
 from keras.layers.convolutional import Conv3D, MaxPooling3D, UpSampling3D, Conv2D, MaxPooling2D, UpSampling2D
 from keras.layers.core import Dropout
-from keras.losses import sparse_categorical_crossentropy, binary_crossentropy
-from keras.models import Sequential
-from keras.optimizers import SGD
+from keras.losses import binary_crossentropy
+from keras.models import Model
+from keras.optimizers import Adam, SGD
 
 
-def model_3D_full(learning_rate=0.01, batch_momentum=0.9):
+def model_3d(channels=4, categories=2, optimizer=Adam()):
 
-    model = Sequential()
+    conv_kernel = (3, 3, 3)
+    pool_size = (2, 2, 2)
+    pool_strides = (2, 2, 2)
 
-    # 1st layer group
-    model.add(Conv3D(16, (3, 3, 2), name='conv1', activation='relu', border_mode='same', subsample=(1, 1, 1), input_shape=(240, 240, 155, 1)))
-    model.add(MaxPooling3D(name='pool1', pool_size=(2, 2, 2), strides=(2, 2, 2), padding='same'))
+    layer00 = Input(shape=(160, 176, 144, channels))
+    layer00_2 = BatchNormalization()(layer00)
 
-    # 2nd layer group
-    model.add(Conv3D(16, (3, 3, 3), name='conv2', activation='relu', border_mode='same', subsample=(1, 1, 1)))
-    model.add(MaxPooling3D(name='pool2', pool_size=(2, 2, 2), strides=(2, 2, 2), padding='same'))
+    layer01 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer00_2)
+    layer02 = MaxPooling3D(pool_size=pool_size, strides=pool_strides)(layer01)
 
-    # 3rd layer group
-    model.add(Conv3D(16, (3, 3, 2), name='conv3', activation='relu', border_mode='same', subsample=(1, 1, 1)))
-    model.add(MaxPooling3D(name='pool3', pool_size=(2, 2, 2), strides=(2, 2, 2), padding='same'))
+    layer03 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer02)
+    layer04 = MaxPooling3D(pool_size=pool_size, strides=pool_strides)(layer03)
 
-    # 4th layer group
-    model.add(Conv3D(16, (3, 3, 3), name='conv4', activation='relu', border_mode='same', subsample=(1, 1, 1)))
-    model.add(MaxPooling3D(name='pool4', pool_size=(2, 2, 2), strides=(2, 2, 2), padding='same'))
+    layer05 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer04)
+    layer06 = MaxPooling3D(pool_size=pool_size, strides=pool_strides)(layer05)
 
-    # 5th layer group
-    model.add(Conv3D(16, (3, 3, 3), name='conv5', activation='relu', border_mode='same', subsample=(1, 1, 1)))
-    model.add(MaxPooling3D(name='pool5', pool_size=(2, 2, 2), strides=(2, 2, 2), padding='same'))
+    layer07 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer06)
+    layer08 = MaxPooling3D(pool_size=pool_size, strides=pool_strides)(layer07)
 
-    # FC layers group
-    model.add(Dense(16, activation='relu', name='fc6'))
-    model.add(Dropout(.5))
-    model.add(Dense(16, activation='relu', name='fc7'))
-    model.add(Dropout(.5))
-    model.add(Dense(1, activation='softmax', name='fc8'))
+    layer09 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer08)
+    layer10 = UpSampling3D(size=pool_size)(layer09)
 
-    model.add(UpSampling3D(size=(30, 30, 31)))
+    concat01 = concatenate([layer07, layer10])
 
-    model.compile(loss=sparse_categorical_crossentropy,
-                  optimizer=SGD(lr=learning_rate, momentum=batch_momentum, nesterov=True))
-    print(model.summary())
+    layer11 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(concat01)
+    layer12 = UpSampling3D(size=pool_size)(layer11)
 
-    return model
+    concat02 = concatenate([layer05, layer12])
 
+    layer13 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(concat02)
+    layer14 = UpSampling3D(size=pool_size)(layer13)
 
-def model_3D_slim(learning_rate=0.01, batch_momentum=0.9):
+    concat03 = concatenate([layer03, layer14])
 
-    model = Sequential()
+    layer15 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(concat03)
+    layer16 = UpSampling3D(size=pool_size)(layer15)
 
-    model.add(Conv3D(16, (5, 5, 5), name='conv', activation='relu', border_mode='same', subsample=(1, 1, 1), input_shape=(240, 240, 155, 1)))
-    model.add(MaxPooling3D(name='pool', pool_size=(5, 5, 5), strides=(5, 5, 5), padding='same'))
-    model.add(Dense(1, activation='softmax', name='fc'))
-    model.add(UpSampling3D(size=(5, 5, 5)))
-    model.add(Activation('sigmoid'))
+    concat04 = concatenate([layer01, layer16])
 
-    model.compile(loss=binary_crossentropy,
-                  optimizer=SGD(lr=learning_rate, momentum=batch_momentum, nesterov=True))
-    print(model.summary())
+    layer17 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(concat04)
+    layer18 = Conv3D(categories, (1, 1, 1), activation='sigmoid', border_mode='same')(layer17)
+
+    model = Model(layer00, layer18)
+
+    model.compile(loss=binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
 
     return model
 
 
-def model_2D_slim(learning_rate=0.01, batch_momentum=0.9):
+def model_2d(channels=4, categories=2, optimizer=Adam()):
 
-    model = Sequential()
+    layer00 = Input(shape=(160, 176, channels))
+    layer00_2 = BatchNormalization()(layer00)
 
-    model.add(Conv2D(16, (5, 5), name='conv',
-                     activation='relu', border_mode='same', subsample=(1, 1),
-                     input_shape=(240, 240, 1)))
-    model.add(MaxPooling2D(name='pool',
-                           pool_size=(5, 5), strides=(5, 5), padding='same'))
-    model.add(Dense(1, name='fc', activation='softmax'))
-    model.add(UpSampling2D(size=(5, 5)))
-    model.add(Activation('sigmoid'))
+    layer01 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer00_2)
+    layer02 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer01)
 
-    model.compile(loss=binary_crossentropy,
-                  optimizer=SGD(lr=learning_rate, momentum=batch_momentum, nesterov=True))
-    print(model.summary())
+    layer03 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer02)
+    layer04 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer03)
+
+    layer05 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer04)
+    layer06 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer05)
+
+    layer07 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer06)
+    layer08 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer07)
+
+    layer09 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer08)
+    layer10 = UpSampling2D(size=(2, 2))(layer09)
+
+    concat01 = concatenate([layer07, layer10])
+
+    layer11 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat01)
+    layer12 = UpSampling2D(size=(2, 2))(layer11)
+
+    concat02 = concatenate([layer05, layer12])
+
+    layer13 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat02)
+    layer14 = UpSampling2D(size=(2, 2))(layer13)
+
+    concat03 = concatenate([layer03, layer14])
+
+    layer15 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat03)
+    layer16 = UpSampling2D(size=(2, 2))(layer15)
+
+    concat04 = concatenate([layer01, layer16])
+
+    layer17 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat04)
+    layer18 = Conv2D(categories, (1, 1), activation='sigmoid', border_mode='same')(layer17)
+
+    model = Model(layer00, layer18)
+
+    model.compile(loss=binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
 
     return model
+
 
 if __name__ == '__main__':
 
-    model_to_test = "2D_slim"
+    local = True
+    optimizer = "adam"
+    model_to_test = "2D"
 
-    ds = DataSet(local_path=config.local_path)
+    if local:
+        ds = DataSet(local_path=config.local_path)
+    else:
+        ds = DataSet(bucket_name=config.bucket_name, prefix_folder=config.prefix_folder)
 
-    if model_to_test == "2D_slim":
-        ds.load_dataset(local=True, all_dims=False, multi_cat=False)
-        model = model_2D_slim()
-        model.fit(ds.X, ds.y, epochs=3)
-    elif model_to_test == "3D_slim":
-        model = model_3D_slim()
-        model.fit(ds.X, ds.y, epochs=5, batch_size=32)
+    if model_to_test == "2D":
+
+        print("Loading Data...")
+        ds.load_dataset(all_dims=False)
+        print("Done.")
+        print(ds.y_keys)
+
+        if optimizer == "sgd":
+            model = model_2d(optimizer=SGD(lr=0.00001, momentum=0.9, nesterov=True))
+        else:
+            model = model_2d(categories=5, optimizer=Adam(lr=0.001, decay=0.1))
+        print(model.summary())
+
+        model.fit(ds.X_train(), ds.y_train(), epochs=2000)
+
+    elif model_to_test == "3D":
+
+        print("Loading Data...")
+        ds.load_dataset()
+        print("Done.")
+
+        model = model_3d(categories=5, optimizer=Adam(lr=0.001, decay=0.1))
+        model.fit(ds.X_train(), ds.y_train(), epochs=200)
 
     print("Losses: ", model.losses)
 
-#    y_predict = model.predict(ds.X)
-#    print(y_predict)
-
-    score = model.evaluate(ds.X, ds.y)
+    score = model.evaluate(ds.X_test(), ds.y_test())
     print("Score: ", score)
+
+    ds.save_y_predict(model)
 
 #    loss_and_metrics = model.evaluate(x_test, y_test, batch_size=128)
 #    classes = model.predict(x_test, batch_size=128)
