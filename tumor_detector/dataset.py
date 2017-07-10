@@ -123,6 +123,7 @@ class DataSet(object):
         self.X = []
         self.y = []
         self.index_train = None
+        self.index_test = None
 
         self.y_predict = []
 
@@ -165,8 +166,8 @@ class DataSet(object):
                 elif self.y_file_name in key.name:
                     y_keys.append(key)
 
-        self.X_keys = [subkeys[:10] for subkeys in X_keys]
-        self.y_keys = y_keys[:10]  # truncated for testing
+        self.X_keys = [subkeys[:20] for subkeys in X_keys]
+        self.y_keys = y_keys[:20]  # truncated for testing
 
     def get_X(self, all_dims):
         X = []
@@ -251,20 +252,19 @@ class DataSet(object):
         Creates a random set of indices for selecting a subset of X and y for a train / test split.
         """
         self.index_train = np.random.choice(len(self.X), int(np.round(len(self.X)*train_pct)), replace=False)
+        self.index_test = np.array([i for i in np.arange(len(self.X)) if i not in self.index_train])
 
     def X_train(self):
         return self.X[self.index_train]
 
     def X_test(self):
-        index_test = [i for i in np.arange(len(self.X)) if i not in self.index_train]
-        return self.X[index_test]
+        return self.X[self.index_test]
 
     def y_train(self):
         return self.y[self.index_train]
 
     def y_test(self):
-        index_test = [i for i in np.arange(len(self.X)) if i not in self.index_train]
-        return self.y[index_test]
+        return self.y[self.index_test]
 
 
 if __name__ == '__main__':
