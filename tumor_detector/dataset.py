@@ -86,7 +86,6 @@ def category_pass(data, multi_cat=True):
     else:
         data_list.extend([(data == 1)*1,
                           (data == 2)*1,
-                          (data == 3)*1,
                           (data == 4)*1])
     return np.stack(data_list, axis=-1)
 
@@ -166,8 +165,8 @@ class DataSet(object):
                 elif self.y_file_name in key.name:
                     y_keys.append(key)
 
-        self.X_keys = [subkeys[:20] for subkeys in X_keys]
-        self.y_keys = y_keys[:20]  # truncated for testing
+        self.X_keys = [subkeys for subkeys in X_keys]
+        self.y_keys = y_keys
 
     def get_X(self, all_dims):
         X = []
