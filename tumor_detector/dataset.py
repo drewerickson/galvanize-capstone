@@ -196,21 +196,29 @@ class DataProcessor(object):
         local: If True, load data from local_path. If False, load from S3.
         """
 
+        print("Starting Process")
+        print("Get Keys: ... ", end="", flush=True)
         self.get_keys()
+        print("Done.")
 
-        self.X_3d = [None] * len(self.X_keys)
-        self.y_3d = [None] * len(self.X_keys)
-        self.X_2d_x = [None] * len(self.X_keys)
-        self.X_2d_y = [None] * len(self.X_keys)
-        self.X_2d_z = [None] * len(self.X_keys)
-        self.y_2d_x = [None] * len(self.X_keys)
-        self.y_2d_y = [None] * len(self.X_keys)
-        self.y_2d_z = [None] * len(self.X_keys)
+        for i in range(140, len(self.X_keys)):
 
-        for i in range(len(self.X_keys)):
+            self.X_3d = None
+            self.y_3d = None
+            self.X_2d_x = None
+            self.X_2d_y = None
+            self.X_2d_z = None
+            self.y_2d_x = None
+            self.y_2d_y = None
+            self.y_2d_z = None
+
+            print("Processing: ", str(i+1), " of ", str(len(self.X_keys)), " ... ", end="", flush=True)
             self.process_3d(i)
-            self.process_2d(i)
+            self.process_2d()
             self.save_output(i)
+            print("Done.")
+
+        print("Processing Complete.")
 
     def get_keys(self):
         """
@@ -253,7 +261,7 @@ class DataProcessor(object):
             X_3d.append(np.pad(X_input, ((0, 0), (0, 0),(45, 40)), 'constant', constant_values=0))  # z padding to 240
             # [40:200, 41:217, 1:145])  # crop with some zero buffer
 
-        self.X_3d[i] = np.stack(X_3d, axis=-1)
+        self.X_3d = np.stack(X_3d, axis=-1)
 
         # load the y input, crop/buffer the dims, split it by category, and stack it
         y_input = self.load_nifti_file(self.y_keys[i])
@@ -268,9 +276,9 @@ class DataProcessor(object):
             y_nz *= ((y_3d[index_cat] == 0) * 1)
         y_3d.append(y_nz)
 
-        self.y_3d[i] = np.stack(y_3d, axis=-1)
+        self.y_3d = np.stack(y_3d, axis=-1)
 
-    def process_2d(self, i):
+    def process_2d(self):
         # for each axis, for each slice, calculate the total count for each category (including brain)
                 # for each category (excluding brain), select the slice with the maximum total count
                 # from those slices, select the one with the minimal difference between all categories
@@ -291,15 +299,15 @@ class DataProcessor(object):
         #     diff = np.sum(np.abs(np.diff(value_group)))
         #     if diff < index_best_slice[1]:
         #         index_best_slice = (index_max[i_max][0], diff)
-        i_x = self.get_optimal_slice_index(self.y_3d[i])
-        self.X_2d_x[i] = self.X_3d[i][i_x, :, :, :]
-        self.y_2d_x[i] = self.y_3d[i][i_x, :, :, :]
-        i_y = self.get_optimal_slice_index(np.swapaxes(self.y_3d[i], 0, 1))
-        self.X_2d_y[i] = self.X_3d[i][:, i_y, :, :]
-        self.y_2d_y[i] = self.y_3d[i][:, i_y, :, :]
-        i_z = self.get_optimal_slice_index(np.swapaxes(self.y_3d[i], 0, 2))
-        self.X_2d_z[i] = self.X_3d[i][:, :, i_z, :]
-        self.y_2d_z[i] = self.y_3d[i][:, :, i_z, :]
+        i_x = self.get_optimal_slice_index(self.y_3d)
+        self.X_2d_x = self.X_3d[i_x, :, :, :]
+        self.y_2d_x = self.y_3d[i_x, :, :, :]
+        i_y = self.get_optimal_slice_index(np.swapaxes(self.y_3d, 0, 1))
+        self.X_2d_y = self.X_3d[:, i_y, :, :]
+        self.y_2d_y = self.y_3d[:, i_y, :, :]
+        i_z = self.get_optimal_slice_index(np.swapaxes(self.y_3d, 0, 2))
+        self.X_2d_z = self.X_3d[:, :, i_z, :]
+        self.y_2d_z = self.y_3d[:, :, i_z, :]
 
     def get_optimal_slice_index(self, volume):
         """
@@ -320,10 +328,11 @@ class DataProcessor(object):
                 if contrast_count > index_max[i_c][1]:
                     index_max[i_c] = (i_d, contrast_count)
             y_2d_values[i_d] = y_2d_value_group
-        index_best_slice = (120, volume.size)
+        index_best_slice = (120, 0)
         for i_max in range(shape_c):
-            value_group = y_2d_values[index_max[i_max][0]]
-            diff = np.sum(np.abs(np.diff(value_group)))
+            i_group, max_value = index_max[i_max]
+            value_group = y_2d_values[i_group]
+            diff = np.sum(value_group-max_value)
             if diff < index_best_slice[1]:
                 index_best_slice = (index_max[i_max][0], diff)
         return index_best_slice[0]
@@ -336,14 +345,14 @@ class DataProcessor(object):
         else:
             patient_path = "/".join(self.y_keys[i].name.split("/")[:-1])
 
-        self.save_nifti_file(self.X_3d[i], patient_path + "/" + self.X_3d_file_name)
-        self.save_nifti_file(self.y_3d[i], patient_path + "/" + self.y_3d_file_name)
-        self.save_nifti_file(self.X_2d_x[i], patient_path + "/" + self.X_2d_x_file_name)
-        self.save_nifti_file(self.X_2d_y[i], patient_path + "/" + self.X_2d_y_file_name)
-        self.save_nifti_file(self.X_2d_z[i], patient_path + "/" + self.X_2d_z_file_name)
-        self.save_nifti_file(self.y_2d_x[i], patient_path + "/" + self.y_2d_x_file_name)
-        self.save_nifti_file(self.y_2d_y[i], patient_path + "/" + self.y_2d_y_file_name)
-        self.save_nifti_file(self.y_2d_z[i], patient_path + "/" + self.y_2d_z_file_name)
+        self.save_nifti_file(self.X_3d, patient_path + "/" + self.X_3d_file_name)
+        self.save_nifti_file(self.y_3d, patient_path + "/" + self.y_3d_file_name)
+        self.save_nifti_file(self.X_2d_x, patient_path + "/" + self.X_2d_x_file_name)
+        self.save_nifti_file(self.X_2d_y, patient_path + "/" + self.X_2d_y_file_name)
+        self.save_nifti_file(self.X_2d_z, patient_path + "/" + self.X_2d_z_file_name)
+        self.save_nifti_file(self.y_2d_x, patient_path + "/" + self.y_2d_x_file_name)
+        self.save_nifti_file(self.y_2d_y, patient_path + "/" + self.y_2d_y_file_name)
+        self.save_nifti_file(self.y_2d_z, patient_path + "/" + self.y_2d_z_file_name)
 
     def load_nifti_file(self, key):
         """
