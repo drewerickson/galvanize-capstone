@@ -114,58 +114,65 @@ if __name__ == '__main__':
     optimizer = "adam"
     model_to_test = "2D"
 
+    print("Initializing DataSet... ", end="", flush=True)
+    ds = None
     if local:
         ds = DataSet(local_path=config.local_path)
     else:
         ds = DataSet(bucket_name=config.bucket_name, prefix_folder=config.prefix_folder)
+    print("Done.")
 
+    print("Selecting Optimizer... ", end="", flush=True)
+    optimizer = None
+    if optimizer == "sgd":
+        optimizer = SGD(lr=0.00001, momentum=0.9, nesterov=True)
+    elif optimizer == "adam":
+        optimizer = Adam(lr=0.0001, decay=0.01)
+    print("Done.")
+
+    print("Loading Data...", end="", flush=True)
     if model_to_test == "2D":
-
-        print("Loading Data...")
         ds.load_dataset(all_dims=False)
-        print("Done.")
-        print("Train: ", len(ds.index_train))
-        print("Test:  ", len(ds.index_test))
-        print("Total: ", len(ds.X))
-        print("Files: ", ds.y_keys)
-        print("Test Files: ", [ds.y_keys[i] for i in ds.index_test])
-
-        if optimizer == "sgd":
-            model = model_2d(optimizer=SGD(lr=0.00001, momentum=0.9, nesterov=True))
-        else:
-            model = model_2d(categories=4, optimizer=Adam(lr=0.0001, decay=0.01))
-        print(model.summary())
-
-        model.fit(ds.X_train(), ds.y_train(), epochs=200)
-
     elif model_to_test == "3D":
-
-        print("Loading Data...")
         ds.load_dataset()
-        print("Done.")
-        print("Train: ", len(ds.index_train))
-        print("Test:  ", len(ds.index_test))
-        print("Total: ", len(ds.X))
-        print("Files: ", ds.y_keys)
-        print("Test Files: ", [ds.y_keys[i] for i in ds.index_test])
+    print("Done.")
 
-        model = model_3d(categories=4, optimizer=Adam(lr=0.0001, decay=0.01))
-        model.fit(ds.X_train(), ds.y_train(), epochs=200)
+    print("Train: ", len(ds.index_train))
+    print("Test:  ", len(ds.index_test))
+    print("Total: ", len(ds.X))
+    print("Files: ", ds.y_keys)
+    print("Test Files: ", [ds.y_keys[i] for i in ds.index_test])
+
+    print("Initializing Model... ", end="", flush=True)
+    model = None
+    if model_to_test == "2D":
+        model = model_2d(categories=4, optimizer=optimizer)
+    elif model_to_test == "3D":
+        model = model_3d(categories=4, optimizer=optimizer)
+    print("Done.")
+
+    print(model.summary())
+
+    print("Training Model:")
+    model.fit(ds.X_train(), ds.y_train(), epochs=2000)
+    print("Done.")
 
     print("Losses: ", model.losses)
     print("Test: ", ds.index_test)
     score = model.evaluate(ds.X_test(), ds.y_test())
     print("Score: ", score)
 
+    print("Building Prediction... ", end="", flush=True)
     ds.save_y_predict(model)
+    print("Done.")
 
+    print("Saving Model... ", end="", flush=True)
     model_json = model.to_json()
     with open("model-200-001.json", "w") as json_file:
         json_file.write(model_json)
-
     model.save_weights("model-200-001.h5")
-    print("Model Saved.")
-
+    print("Done.")
+    print("")
     print("Job Complete.")
 
 #    loss_and_metrics = model.evaluate(x_test, y_test, batch_size=128)
