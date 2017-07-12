@@ -415,8 +415,8 @@ class DataSet(object):
     def __init__(self, bucket_name=None, prefix_folder=None, local_path=None):
 
         self.X_file_names = ["X-2D-x.nii.gz", "X-2D-y.nii.gz", "X-2D-z.nii.gz"]
-        self.y_file_name = ["y-2D-x.nii.gz", "y-2D-y.nii.gz", "y-2D-z.nii.gz"]
-        self.y_predict_file_name = "predict.nii.gz"
+        self.y_file_names = ["y-2D-x.nii.gz", "y-2D-y.nii.gz", "y-2D-z.nii.gz"]
+        self.y_predict_file_name = "predict-2d-2000-003.nii.gz"
 
         if bucket_name and prefix_folder:
             self.bucket = connect_to_bucket(bucket_name) if bucket_name else None
@@ -464,7 +464,7 @@ class DataSet(object):
                     for file_name in files:
                         if file_name in self.X_file_names:
                             X_keys.append(os.path.join(root, file_name))
-                        elif file_name == self.y_file_name:
+                        elif file_name in self.y_file_names:
                             y_keys.append(os.path.join(root, file_name))
         else:
             for key in self.bucket.list(prefix=self.prefix_folder):
@@ -473,7 +473,7 @@ class DataSet(object):
                 if patientID in cbica_pids:
                     if file_name in self.X_file_names:
                         X_keys.append(key)
-                    elif self.y_file_name in key.name:
+                    elif key.name in self.y_file_names:
                         y_keys.append(key)
 
         self.X_keys = X_keys
@@ -556,7 +556,7 @@ class DataSet(object):
 if __name__ == '__main__':
 
     local = True
-    process = True
+    process = False
 
     if local and process:
         dp = DataProcessor(local_path=config.local_path)
