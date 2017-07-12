@@ -4,6 +4,58 @@ import boto
 import nibabel as nib
 import numpy as np
 
+# This is a curated set of patients that have greater than 1% voxels in each of the three tumor categories
+robust_pids = ['Brats17_2013_11_1',
+               'Brats17_2013_12_1',
+               'Brats17_2013_17_1',
+               'Brats17_2013_19_1',
+               'Brats17_2013_21_1',
+               'Brats17_2013_22_1',
+               'Brats17_CBICA_AAP_1',
+               'Brats17_CBICA_AQU_1',
+               'Brats17_CBICA_AQV_1',
+               'Brats17_CBICA_ARF_1',
+               'Brats17_CBICA_ASA_1',
+               'Brats17_CBICA_ASG_1',
+               'Brats17_CBICA_ASV_1',
+               'Brats17_CBICA_ATF_1',
+               'Brats17_CBICA_AUN_1',
+               'Brats17_CBICA_AWG_1',
+               'Brats17_CBICA_AXM_1',
+               'Brats17_CBICA_AXN_1',
+               'Brats17_CBICA_AXO_1',
+               'Brats17_TCIA_105_1',
+               'Brats17_TCIA_118_1',
+               'Brats17_TCIA_151_1',
+               'Brats17_TCIA_167_1',
+               'Brats17_TCIA_180_1',
+               'Brats17_TCIA_184_1',
+               'Brats17_TCIA_203_1',
+               'Brats17_TCIA_222_1',
+               'Brats17_TCIA_241_1',
+               'Brats17_TCIA_242_1',
+               'Brats17_TCIA_257_1',
+               'Brats17_TCIA_265_1',
+               'Brats17_TCIA_274_1',
+               'Brats17_TCIA_296_1',
+               'Brats17_TCIA_300_1',
+               'Brats17_TCIA_335_1',
+               'Brats17_TCIA_374_1',
+               'Brats17_TCIA_390_1',
+               'Brats17_TCIA_401_1',
+               'Brats17_TCIA_410_1',
+               'Brats17_TCIA_412_1',
+               'Brats17_TCIA_419_1',
+               'Brats17_TCIA_429_1',
+               'Brats17_TCIA_430_1',
+               'Brats17_TCIA_436_1',
+               'Brats17_TCIA_444_1',
+               'Brats17_TCIA_460_1',
+               'Brats17_TCIA_469_1',
+               'Brats17_TCIA_478_1',
+               'Brats17_TCIA_603_1',
+               'Brats17_TCIA_654_1']
+
 
 def connect_to_bucket(bucket_name):
     """
@@ -82,12 +134,238 @@ def category_pass(data, multi_cat=True):
 
     data_list = []
     if not multi_cat:
-        data_list.append((data != 0)*1)
+        data_list.append((data != 0) * 1)
     else:
-        data_list.extend([(data == 1)*1,
-                          (data == 2)*1,
-                          (data == 4)*1])
+        data_list.extend([(data == 1) * 1,
+                          (data == 2) * 1,
+                          (data == 4) * 1])
     return np.stack(data_list, axis=-1)
+
+
+class DataProcessor(object):
+    """
+    DataProcessor takes in data and runs a series of processes on it.
+    For a given directory of files, it runs through a process for each patient.
+    The results are saved to file in the same location as the original data.
+
+    bucket: S3 bucket
+    prefix_folder: string of folder in S3 bucket where data is stored
+    local_path: string of local file path where data is stored
+    X: numpy array of X data
+    y: numpy array of y data
+    index_train: numpy array of booleans indicating which data to use for training.
+    """
+
+    def __init__(self, bucket_name=None, prefix_folder=None, local_path=None):
+
+        self.X_input_file_names = ["t1.nii.gz", "t2.nii.gz", "t1ce.nii.gz", "flair.nii.gz"]
+        self.y_input_file_name = "seg.nii.gz"
+
+        self.X_3d_file_name = "X-3D.nii.gz"
+        self.y_3d_file_name = "y-3D.nii.gz"
+        self.X_2d_x_file_name = "X-2D-x.nii.gz"
+        self.X_2d_y_file_name = "X-2D-y.nii.gz"
+        self.X_2d_z_file_name = "X-2D-z.nii.gz"
+        self.y_2d_x_file_name = "y-2D-x.nii.gz"
+        self.y_2d_y_file_name = "y-2D-y.nii.gz"
+        self.y_2d_z_file_name = "y-2D-z.nii.gz"
+
+        if bucket_name and prefix_folder:
+            self.bucket = connect_to_bucket(bucket_name) if bucket_name else None
+            self.prefix_folder = prefix_folder
+            self.local = False
+        elif local_path:
+            self.local_path = local_path
+            self.local = True
+
+        self.X_keys = None
+        self.y_keys = None
+        self.X_3d = None
+        self.y_3d = None
+        self.X_2d_x = None
+        self.X_2d_y = None
+        self.X_2d_z = None
+        self.y_2d_x = None
+        self.y_2d_y = None
+        self.y_2d_z = None
+
+    def process_data(self):
+        """
+        Gets all the relevant patient 'keys'.
+        For each patient 'key', runs the specified processors and saves the results.
+        local: If True, load data from local_path. If False, load from S3.
+        """
+
+        self.get_keys()
+
+        self.X_3d = [None] * len(self.X_keys)
+        self.y_3d = [None] * len(self.X_keys)
+        self.X_2d_x = [None] * len(self.X_keys)
+        self.X_2d_y = [None] * len(self.X_keys)
+        self.X_2d_z = [None] * len(self.X_keys)
+        self.y_2d_x = [None] * len(self.X_keys)
+        self.y_2d_y = [None] * len(self.X_keys)
+        self.y_2d_z = [None] * len(self.X_keys)
+
+        for i in range(len(self.X_keys)):
+            self.process_3d(i)
+            self.process_2d(i)
+            self.save_output(i)
+
+    def get_keys(self):
+        """
+        Gets 'keys' based on X and y input file names.
+        local: If True, gets local file paths as 'keys'.  If False, get S3 bucket keys.
+        """
+
+        X_keys = []
+        y_keys = []
+        if self.local:
+            for root, dirs, files in os.walk(self.local_path):
+                X_keygroup = [None] * len(self.X_input_file_names)
+                for file_name in files:
+                    if file_name in self.X_input_file_names:
+                        X_keygroup[self.X_input_file_names.index(file_name)] = os.path.join(root, file_name)
+                    elif file_name == self.y_input_file_name:
+                        y_keys.append(os.path.join(root, file_name))
+                if X_keygroup[0]:
+                    X_keys.append(X_keygroup)
+        else:
+            for key in self.bucket.list(prefix=self.prefix_folder):
+                file_name = key.name.split("/")[-1]
+                patientID = key.name.split("/")[-2]
+                if file_name in self.X_input_file_names:
+                    X_keys[self.X_input_file_names.index(file_name)].append(key)
+                elif self.y_input_file_name in key.name:
+                    y_keys.append(key)
+
+        # separate assignment step to allow subsampling
+        self.X_keys = X_keys
+        self.y_keys = y_keys
+
+    def process_3d(self, i):
+
+        # load the X input across all scans, crop/buffer the dims, and stack it
+        X_keygroup = self.X_keys[i]
+        X_3d = []
+        for index_contrast in range(len(X_keygroup)):
+            X_input = self.load_nifti_file(X_keygroup[index_contrast])
+            X_3d.append(np.pad(X_input, ((0, 0), (0, 0),(45, 40)), 'constant', constant_values=0))  # z padding to 240
+            # [40:200, 41:217, 1:145])  # crop with some zero buffer
+
+        self.X_3d[i] = np.stack(X_3d, axis=-1)
+
+        # load the y input, crop/buffer the dims, split it by category, and stack it
+        y_input = self.load_nifti_file(self.y_keys[i])
+        y_3d = np.pad(y_input, ((0, 0), (0, 0), (45, 40)), 'constant', constant_values=0)
+        y_3d = [(y_3d == 1) * 1, (y_3d == 2) * 1, (y_3d == 4) * 1]
+
+        # generate a brain mask from X and y data, then add it
+        y_nz = (X_3d[0] != 1) * 1
+        for index_scan in range(len(X_3d)):
+            y_nz *= ((X_3d[index_scan] != 0) * 1)
+        for index_cat in range(len(y_3d)):
+            y_nz *= ((y_3d[index_cat] == 0) * 1)
+        y_3d.append(y_nz)
+
+        self.y_3d[i] = np.stack(y_3d, axis=-1)
+
+    def process_2d(self, i):
+        # for each axis, for each slice, calculate the total count for each category (including brain)
+                # for each category (excluding brain), select the slice with the maximum total count
+                # from those slices, select the one with the minimal difference between all categories
+        # shape = self.y_3d[i].shape
+        # y_2d_x_values = np.zeros(shape[0])
+        # index_max = np.zeros(shape[-1])
+        # for i_x in range(shape[0]):
+        #     y_2d_x_value_group = np.zeros(shape[-1])
+        #     for i_c in range(shape[-1]-1):
+        #         contrast_count = np.count_nonzero((self.y[i][i_x, ..., i_c] == 1) * 1)
+        #         y_2d_x_value_group[i_c] = contrast_count
+        #         if contrast_count > index_max[i_c][1]:
+        #             index_max[i_c] = (i_x, contrast_count)
+        #     y_2d_x_values[i_x] = y_2d_x_value_group
+        # index_best_slice = (0,self.y[i].size)
+        # for i_max in range(index_max.shape[0]):
+        #     value_group = y_2d_x_values[index_max[i_max][0]]
+        #     diff = np.sum(np.abs(np.diff(value_group)))
+        #     if diff < index_best_slice[1]:
+        #         index_best_slice = (index_max[i_max][0], diff)
+        i_x = self.get_optimal_slice_index(self.y_3d[i])
+        self.X_2d_x[i] = self.X_3d[i][i_x, :, :, :]
+        self.y_2d_x[i] = self.y_3d[i][i_x, :, :, :]
+        i_y = self.get_optimal_slice_index(np.swapaxes(self.y_3d[i], 0, 1))
+        self.X_2d_y[i] = self.X_3d[i][:, i_y, :, :]
+        self.y_2d_y[i] = self.y_3d[i][:, i_y, :, :]
+        i_z = self.get_optimal_slice_index(np.swapaxes(self.y_3d[i], 0, 2))
+        self.X_2d_z[i] = self.X_3d[i][:, :, i_z, :]
+        self.y_2d_z[i] = self.y_3d[i][:, :, i_z, :]
+
+    def get_optimal_slice_index(self, volume):
+        """
+        Gets the optimal slice for the 0th dimension.  Assumes -1th dimension is categorical.
+        Ignores the last category.
+        Takes in a 3D volume with a categorical dimension.
+        Returns an integer index for the 0th dimension.
+        """
+        shape = volume.shape
+        shape_c = shape[-1]-1
+        y_2d_values = [None] * shape[0]
+        index_max = [(120, 0)] * shape_c  # default to the center axis if no optimal axis exists for a category
+        for i_d in range(shape[0]):
+            y_2d_value_group = np.zeros(shape_c)
+            for i_c in range(shape_c):
+                contrast_count = np.count_nonzero((volume[i_d, ..., i_c] == 1) * 1)
+                y_2d_value_group[i_c] = contrast_count
+                if contrast_count > index_max[i_c][1]:
+                    index_max[i_c] = (i_d, contrast_count)
+            y_2d_values[i_d] = y_2d_value_group
+        index_best_slice = (120, volume.size)
+        for i_max in range(shape_c):
+            value_group = y_2d_values[index_max[i_max][0]]
+            diff = np.sum(np.abs(np.diff(value_group)))
+            if diff < index_best_slice[1]:
+                index_best_slice = (index_max[i_max][0], diff)
+        return index_best_slice[0]
+
+    def save_output(self, i):
+
+        patient_path = ""
+        if self.local:
+            patient_path = "/".join(self.y_keys[i].split("/")[:-1])
+        else:
+            patient_path = "/".join(self.y_keys[i].name.split("/")[:-1])
+
+        self.save_nifti_file(self.X_3d[i], patient_path + "/" + self.X_3d_file_name)
+        self.save_nifti_file(self.y_3d[i], patient_path + "/" + self.y_3d_file_name)
+        self.save_nifti_file(self.X_2d_x[i], patient_path + "/" + self.X_2d_x_file_name)
+        self.save_nifti_file(self.X_2d_y[i], patient_path + "/" + self.X_2d_y_file_name)
+        self.save_nifti_file(self.X_2d_z[i], patient_path + "/" + self.X_2d_z_file_name)
+        self.save_nifti_file(self.y_2d_x[i], patient_path + "/" + self.y_2d_x_file_name)
+        self.save_nifti_file(self.y_2d_y[i], patient_path + "/" + self.y_2d_y_file_name)
+        self.save_nifti_file(self.y_2d_z[i], patient_path + "/" + self.y_2d_z_file_name)
+
+    def load_nifti_file(self, key):
+        """
+        Loads a NIfTI file at the given key.  Allows local or remote loading.
+        Returns a 3D numpy array.
+        """
+
+        if self.local:
+            data = load_nifti_file_local(key)
+        else:
+            data = load_nifti_file_S3(key)
+        return data
+
+    def save_nifti_file(self, data, file_path):
+        """
+        Save NIfTI data to file (local or S3).
+        """
+
+        if self.local:
+            save_nifti_file_local(data, file_path)
+        else:
+            save_nifti_file_S3(data, file_path, self.bucket)
 
 
 class DataSet(object):
@@ -152,18 +430,21 @@ class DataSet(object):
         y_keys = []
         if self.local:
             for root, dirs, files in os.walk(self.local_path):
-                for file_name in files:
-                    if file_name in self.X_file_names:
-                        X_keys[self.X_file_names.index(file_name)].append(os.path.join(root, file_name))
-                    elif file_name == self.y_file_name:
-                        y_keys.append(os.path.join(root, file_name))
+                if root.split("/")[-1] in robust_pids:
+                    for file_name in files:
+                        if file_name in self.X_file_names:
+                            X_keys[self.X_file_names.index(file_name)].append(os.path.join(root, file_name))
+                        elif file_name == self.y_file_name:
+                            y_keys.append(os.path.join(root, file_name))
         else:
             for key in self.bucket.list(prefix=self.prefix_folder):
                 file_name = key.name.split("/")[-1]
-                if file_name in self.X_file_names:
-                    X_keys[self.X_file_names.index(file_name)].append(key)
-                elif self.y_file_name in key.name:
-                    y_keys.append(key)
+                patientID = key.name.split("/")[-2]
+                if patientID in robust_pids:
+                    if file_name in self.X_file_names:
+                        X_keys[self.X_file_names.index(file_name)].append(key)
+                    elif self.y_file_name in key.name:
+                        y_keys.append(key)
 
         self.X_keys = [subkeys for subkeys in X_keys]
         self.y_keys = y_keys
@@ -250,7 +531,7 @@ class DataSet(object):
         """
         Creates a random set of indices for selecting a subset of X and y for a train / test split.
         """
-        self.index_train = np.random.choice(len(self.X), int(np.round(len(self.X)*train_pct)), replace=False)
+        self.index_train = np.random.choice(len(self.X), int(np.round(len(self.X) * train_pct)), replace=False)
         self.index_test = np.array([i for i in np.arange(len(self.X)) if i not in self.index_train])
 
     def X_train(self):
@@ -267,20 +548,22 @@ class DataSet(object):
 
 
 if __name__ == '__main__':
-    ds = DataSet(local_path=config.local_path)
-#    ds.load_dataset()
+    dp = DataProcessor(local_path=config.local_path)
+    dp.process_data()
+    #    ds = DataSet(local_path=config.local_path)
+    #    ds.load_dataset()
+    #    ds.load_dataset(all_dims=False)
+    #    ds.load_dataset(multi_cat=False)
 #    ds.load_dataset(all_dims=False)
-#    ds.load_dataset(multi_cat=False)
-    ds.load_dataset(all_dims=False)
-    for i in range(len(ds.X)):
-        save_path = "/".join(ds.y_keys[i].split("/")[:-1])
-        ds.save_nifti_file(ds.X[i], save_path + "/X.nii.gz")
-        ds.save_nifti_file(ds.y[i], save_path + "/y.nii.gz")
+#    for i in range(len(ds.X)):
+#        save_path = "/".join(ds.y_keys[i].split("/")[:-1])
+#        ds.save_nifti_file(ds.X[i], save_path + "/X.nii.gz")
+#        ds.save_nifti_file(ds.y[i], save_path + "/y.nii.gz")
 #    ds = DataSet(config.bucket_name, "train")
 #    ds.load_dataset()
     #    ds.load_dataset(local=False, all_dims=False)
     #    ds.load_dataset(local=False, multi_cat=False)
-#    ds.load_dataset(all_dims=False, multi_cat=False)
-#    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].name.split("/")[:-1]) + "/predict.nii.gz")
+    #    ds.load_dataset(all_dims=False, multi_cat=False)
+    #    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].name.split("/")[:-1]) + "/predict.nii.gz")
 
     print("Complete")
