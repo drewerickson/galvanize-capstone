@@ -108,7 +108,9 @@ def model_2d(channels=4, categories=2, optimizer=Adam()):
 
 if __name__ == '__main__':
 
-    local = True
+    print("Job Started!")
+
+    local = False
     optimizer = "adam"
     model_to_test = "2D"
 
@@ -122,31 +124,49 @@ if __name__ == '__main__':
         print("Loading Data...")
         ds.load_dataset(all_dims=False)
         print("Done.")
-        print(ds.y_keys)
+        print("Train: ", len(ds.index_train))
+        print("Test:  ", len(ds.index_test))
+        print("Total: ", len(ds.X))
+        print("Files: ", ds.y_keys)
+        print("Test Files: ", [ds.y_keys[i] for i in ds.index_test])
 
         if optimizer == "sgd":
             model = model_2d(optimizer=SGD(lr=0.00001, momentum=0.9, nesterov=True))
         else:
-            model = model_2d(categories=5, optimizer=Adam(lr=0.001, decay=0.1))
+            model = model_2d(categories=4, optimizer=Adam(lr=0.0001, decay=0.01))
         print(model.summary())
 
-        model.fit(ds.X_train(), ds.y_train(), epochs=2000)
+        model.fit(ds.X_train(), ds.y_train(), epochs=200)
 
     elif model_to_test == "3D":
 
         print("Loading Data...")
         ds.load_dataset()
         print("Done.")
+        print("Train: ", len(ds.index_train))
+        print("Test:  ", len(ds.index_test))
+        print("Total: ", len(ds.X))
+        print("Files: ", ds.y_keys)
+        print("Test Files: ", [ds.y_keys[i] for i in ds.index_test])
 
-        model = model_3d(categories=5, optimizer=Adam(lr=0.001, decay=0.1))
+        model = model_3d(categories=4, optimizer=Adam(lr=0.0001, decay=0.01))
         model.fit(ds.X_train(), ds.y_train(), epochs=200)
 
     print("Losses: ", model.losses)
-
+    print("Test: ", ds.index_test)
     score = model.evaluate(ds.X_test(), ds.y_test())
     print("Score: ", score)
 
     ds.save_y_predict(model)
+
+    model_json = model.to_json()
+    with open("model-200-001.json", "w") as json_file:
+        json_file.write(model_json)
+
+    model.save_weights("model-200-001.h5")
+    print("Model Saved.")
+
+    print("Job Complete.")
 
 #    loss_and_metrics = model.evaluate(x_test, y_test, batch_size=128)
 #    classes = model.predict(x_test, batch_size=128)
