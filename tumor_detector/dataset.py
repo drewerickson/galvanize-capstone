@@ -56,6 +56,28 @@ robust_pids = ['Brats17_2013_11_1',
                'Brats17_TCIA_603_1',
                'Brats17_TCIA_654_1']
 
+cbica_pids = ['Brats17_CBICA_AAB_1', 'Brats17_CBICA_AAG_1', 'Brats17_CBICA_AAL_1', 'Brats17_CBICA_AAP_1',
+              'Brats17_CBICA_ABB_1', 'Brats17_CBICA_ABE_1', 'Brats17_CBICA_ABM_1', 'Brats17_CBICA_ABN_1',
+              'Brats17_CBICA_ABO_1', 'Brats17_CBICA_ABY_1', 'Brats17_CBICA_ALN_1', 'Brats17_CBICA_ALU_1',
+              'Brats17_CBICA_ALX_1', 'Brats17_CBICA_AME_1', 'Brats17_CBICA_AMH_1', 'Brats17_CBICA_ANG_1',
+              'Brats17_CBICA_ANI_1', 'Brats17_CBICA_ANP_1', 'Brats17_CBICA_ANZ_1', 'Brats17_CBICA_AOD_1',
+              'Brats17_CBICA_AOH_1', 'Brats17_CBICA_AOO_1', 'Brats17_CBICA_AOP_1', 'Brats17_CBICA_AOZ_1',
+              'Brats17_CBICA_APR_1', 'Brats17_CBICA_APY_1', 'Brats17_CBICA_APZ_1', 'Brats17_CBICA_AQA_1',
+              'Brats17_CBICA_AQD_1', 'Brats17_CBICA_AQG_1', 'Brats17_CBICA_AQJ_1', 'Brats17_CBICA_AQN_1',
+              'Brats17_CBICA_AQO_1', 'Brats17_CBICA_AQP_1', 'Brats17_CBICA_AQQ_1', 'Brats17_CBICA_AQR_1',
+              'Brats17_CBICA_AQT_1', 'Brats17_CBICA_AQU_1', 'Brats17_CBICA_AQV_1', 'Brats17_CBICA_AQY_1',
+              'Brats17_CBICA_AQZ_1', 'Brats17_CBICA_ARF_1', 'Brats17_CBICA_ARW_1', 'Brats17_CBICA_ARZ_1',
+              'Brats17_CBICA_ASA_1', 'Brats17_CBICA_ASE_1', 'Brats17_CBICA_ASG_1', 'Brats17_CBICA_ASH_1',
+              'Brats17_CBICA_ASK_1', 'Brats17_CBICA_ASN_1', 'Brats17_CBICA_ASO_1', 'Brats17_CBICA_ASU_1',
+              'Brats17_CBICA_ASV_1', 'Brats17_CBICA_ASW_1', 'Brats17_CBICA_ASY_1', 'Brats17_CBICA_ATB_1',
+              'Brats17_CBICA_ATD_1', 'Brats17_CBICA_ATF_1', 'Brats17_CBICA_ATP_1', 'Brats17_CBICA_ATV_1',
+              'Brats17_CBICA_ATX_1', 'Brats17_CBICA_AUN_1', 'Brats17_CBICA_AUQ_1', 'Brats17_CBICA_AUR_1',
+              'Brats17_CBICA_AVG_1', 'Brats17_CBICA_AVJ_1', 'Brats17_CBICA_AVV_1', 'Brats17_CBICA_AWG_1',
+              'Brats17_CBICA_AWH_1', 'Brats17_CBICA_AWI_1', 'Brats17_CBICA_AXJ_1', 'Brats17_CBICA_AXL_1',
+              'Brats17_CBICA_AXM_1', 'Brats17_CBICA_AXN_1', 'Brats17_CBICA_AXO_1', 'Brats17_CBICA_AXQ_1',
+              'Brats17_CBICA_AXW_1', 'Brats17_CBICA_AYA_1', 'Brats17_CBICA_AYI_1', 'Brats17_CBICA_AYU_1',
+              'Brats17_CBICA_AYW_1', 'Brats17_CBICA_AZD_1', 'Brats17_CBICA_AZH_1', 'Brats17_CBICA_BFB_1',
+              'Brats17_CBICA_BFP_1', 'Brats17_CBICA_BHB_1', 'Brats17_CBICA_BHK_1', 'Brats17_CBICA_BHM_1']
 
 def connect_to_bucket(bucket_name):
     """
@@ -392,8 +414,8 @@ class DataSet(object):
 
     def __init__(self, bucket_name=None, prefix_folder=None, local_path=None):
 
-        self.X_file_names = ["t1.nii.gz", "t2.nii.gz", "t1ce.nii.gz", "flair.nii.gz"]
-        self.y_file_name = "seg.nii.gz"
+        self.X_file_names = ["X-2D-x.nii.gz", "X-2D-y.nii.gz", "X-2D-z.nii.gz"]
+        self.y_file_name = ["y-2D-x.nii.gz", "y-2D-y.nii.gz", "y-2D-z.nii.gz"]
         self.y_predict_file_name = "predict.nii.gz"
 
         if bucket_name and prefix_folder:
@@ -413,7 +435,7 @@ class DataSet(object):
 
         self.y_predict = []
 
-    def load_dataset(self, all_dims=True, multi_cat=True):
+    def load_dataset(self):
         """
         Loads X and y datasets with specified parameters.
         local: If True, load data from local_path. If False, load from S3.
@@ -423,9 +445,8 @@ class DataSet(object):
 
         self.get_keys()
 
-        self.get_X(all_dims)
-        self.get_y(all_dims, multi_cat)
-        self.mask_nz()
+        self.get_X()
+        self.get_y()
 
         self.train_test_split()
 
@@ -435,62 +456,42 @@ class DataSet(object):
         local: If True, gets local file paths as 'keys'.  If False, get S3 bucket keys.
         """
 
-        X_keys = [[] for _ in self.X_file_names]
+        X_keys = []
         y_keys = []
         if self.local:
             for root, dirs, files in os.walk(self.local_path):
-                if root.split("/")[-1] in robust_pids:
+                if root.split("/")[-1] in cbica_pids:
                     for file_name in files:
                         if file_name in self.X_file_names:
-                            X_keys[self.X_file_names.index(file_name)].append(os.path.join(root, file_name))
+                            X_keys.append(os.path.join(root, file_name))
                         elif file_name == self.y_file_name:
                             y_keys.append(os.path.join(root, file_name))
         else:
             for key in self.bucket.list(prefix=self.prefix_folder):
                 file_name = key.name.split("/")[-1]
                 patientID = key.name.split("/")[-2]
-                if patientID in robust_pids:
+                if patientID in cbica_pids:
                     if file_name in self.X_file_names:
-                        X_keys[self.X_file_names.index(file_name)].append(key)
+                        X_keys.append(key)
                     elif self.y_file_name in key.name:
                         y_keys.append(key)
 
-        self.X_keys = [subkeys for subkeys in X_keys]
+        self.X_keys = X_keys
         self.y_keys = y_keys
 
-    def get_X(self, all_dims):
+    def get_X(self):
         X = []
-        for index_row in range(len(self.X_keys[0])):
-            X_row = []
-            for index_contrast in range(len(self.X_keys)):
-                X_row.append(self.load_nifti_file(self.X_keys[index_contrast][index_row], all_dims=all_dims))
-            X.append(np.stack(X_row, axis=-1))
+        for X_key in self.X_keys:
+            X.append(self.load_nifti_file(X_key))
         self.X = np.stack(X, axis=0)
 
-    def get_y(self, all_dims, multi_cat):
-        self.y = np.stack([category_pass(self.load_nifti_file(key,
-                                                              all_dims=all_dims),
-                                         multi_cat=multi_cat) for key in self.y_keys],
-                          axis=0)
+    def get_y(self):
+        y = []
+        for y_key in self.y_keys:
+            y.append(self.load_nifti_file(y_key))
+        self.y = np.stack(y, axis=0)
 
-    def mask_nz(self):
-        """
-        For each X, create an exclusive mask for all voxels that have all nonzero X values.
-        Set the mask to zero for all y values, and add the mask as another y label.
-        The result will be a label for all nonzero, non categorized values.
-        """
-        y_update = []
-        for i, X_entry in enumerate(self.X):
-            y_nz = (X_entry[..., 0] != 1) * 1
-            for index_scan in range(X_entry.shape[-1]):
-                y_nz *= ((X_entry[..., index_scan] != 0) * 1)
-            for index_cat in range(self.y[i].shape[-1]):
-                y_nz *= ((self.y[i][..., index_cat] == 0) * 1)
-            y_nz = np.expand_dims(y_nz, axis=-1)
-            y_update.append(np.append(self.y[i], y_nz, axis=-1))
-        self.y = np.stack(y_update, axis=0)
-
-    def load_nifti_file(self, key, all_dims=True):
+    def load_nifti_file(self, key):
         """
         Loads a NIfTI file at the given key.  Allows local or remote loading.
         Reduces 3rd dimension if all_dims is False.
@@ -501,10 +502,6 @@ class DataSet(object):
             data = load_nifti_file_local(key)
         else:
             data = load_nifti_file_S3(key)
-        if not all_dims:
-            data = data[40:200, 41:217, 80]  # crop close to brain, selected z plane 80 for testing
-        else:
-            data = data[40:200, 41:217, 1:145]  # crop with some zero buffer
         return data
 
     def save_nifti_file(self, data, file_path):
@@ -557,22 +554,21 @@ class DataSet(object):
 
 
 if __name__ == '__main__':
-    dp = DataProcessor(local_path=config.local_path)
-    dp.process_data()
-    #    ds = DataSet(local_path=config.local_path)
-    #    ds.load_dataset()
-    #    ds.load_dataset(all_dims=False)
-    #    ds.load_dataset(multi_cat=False)
-#    ds.load_dataset(all_dims=False)
-#    for i in range(len(ds.X)):
-#        save_path = "/".join(ds.y_keys[i].split("/")[:-1])
-#        ds.save_nifti_file(ds.X[i], save_path + "/X.nii.gz")
-#        ds.save_nifti_file(ds.y[i], save_path + "/y.nii.gz")
-#    ds = DataSet(config.bucket_name, "train")
-#    ds.load_dataset()
-    #    ds.load_dataset(local=False, all_dims=False)
-    #    ds.load_dataset(local=False, multi_cat=False)
-    #    ds.load_dataset(all_dims=False, multi_cat=False)
-    #    ds.save_nifti_file(ds.y[0], "/".join(ds.y_keys[0].name.split("/")[:-1]) + "/predict.nii.gz")
+
+    local = True
+    process = True
+
+    if local and process:
+        dp = DataProcessor(local_path=config.local_path)
+        dp.process_data()
+    elif local and (not process):
+        ds = DataSet(local_path=config.local_path)
+        ds.load_dataset()
+    elif (not local) and process:
+        dp = DataProcessor(config.bucket_name, "train")
+        dp.process_data()
+    elif not(local and process):
+        ds = DataSet(config.bucket_name, "train")
+        ds.load_dataset()
 
     print("Complete")
