@@ -14,7 +14,7 @@ def model_3d(channels=4, categories=2, optimizer=Adam()):
     pool_size = (2, 2, 2)
     pool_strides = (2, 2, 2)
 
-    layer00 = Input(shape=(160, 176, 144, channels))
+    layer00 = Input(shape=(240, 240, 240, channels))
     layer00_2 = BatchNormalization()(layer00)
 
     layer01 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer00_2)
@@ -61,7 +61,7 @@ def model_3d(channels=4, categories=2, optimizer=Adam()):
 
 def model_2d(channels=4, categories=2, optimizer=Adam()):
 
-    layer00 = Input(shape=(160, 176, channels))
+    layer00 = Input(shape=(240, 240, channels))
     layer00_2 = BatchNormalization()(layer00)
 
     layer01 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer00_2)
@@ -110,9 +110,12 @@ if __name__ == '__main__':
 
     print("Job Started!")
 
+    model_id = "2000-005"
     local = False
-    optimizer = "adam"
+    set_optimizer = "adam"
     model_to_test = "2D"
+    num_cats = 4
+    train = True
 
     print("Initializing DataSet... ", end="", flush=True)
     ds = None
@@ -124,15 +127,15 @@ if __name__ == '__main__':
 
     print("Selecting Optimizer... ", end="", flush=True)
     optimizer = None
-    if optimizer == "sgd":
+    if set_optimizer == "sgd":
         optimizer = SGD(lr=0.00001, momentum=0.9, nesterov=True)
-    elif optimizer == "adam":
-        optimizer = Adam(lr=0.0001, decay=0.01)
+    elif set_optimizer == "adam":
+        optimizer = Adam(lr=0.0001, decay=0.001)
     print("Done.")
 
     print("Loading Data...", end="", flush=True)
     if model_to_test == "2D":
-        ds.load_dataset(all_dims=False)
+        ds.load_dataset()
     elif model_to_test == "3D":
         ds.load_dataset()
     print("Done.")
@@ -146,16 +149,18 @@ if __name__ == '__main__':
     print("Initializing Model... ", end="", flush=True)
     model = None
     if model_to_test == "2D":
-        model = model_2d(categories=4, optimizer=optimizer)
+        model = model_2d(categories=num_cats, optimizer=optimizer)
     elif model_to_test == "3D":
-        model = model_3d(categories=4, optimizer=optimizer)
+        model = model_3d(categories=num_cats, optimizer=optimizer)
     print("Done.")
 
-    print(model.summary())
-
-    print("Training Model:")
-    model.fit(ds.X_train(), ds.y_train(), epochs=2000)
-    print("Done.")
+    if train:
+        print(model.summary())
+        print("Training Model:")
+        model.fit(ds.X_train(), ds.y_train(), epochs=1000, validation_data=(ds.X_test(), ds.y_test()))
+        print("Done.")
+    else:
+        model.load_weights("model-" + model_id + ".h5")
 
     print("Losses: ", model.losses)
     print("Test: ", ds.index_test)
@@ -163,14 +168,14 @@ if __name__ == '__main__':
     print("Score: ", score)
 
     print("Building Prediction... ", end="", flush=True)
-    ds.save_y_predict(model)
+    ds.save_y_predict(model, model_id)
     print("Done.")
 
     print("Saving Model... ", end="", flush=True)
     model_json = model.to_json()
-    with open("model-200-001.json", "w") as json_file:
+    with open("model-" + model_id + ".json", "w") as json_file:
         json_file.write(model_json)
-    model.save_weights("model-200-001.h5")
+    model.save_weights("model-" + model_id + ".h5")
     print("Done.")
     print("")
     print("Job Complete.")
