@@ -79,6 +79,49 @@ cbica_pids = ['Brats17_CBICA_AAB_1', 'Brats17_CBICA_AAG_1', 'Brats17_CBICA_AAL_1
               'Brats17_CBICA_AYW_1', 'Brats17_CBICA_AZD_1', 'Brats17_CBICA_AZH_1', 'Brats17_CBICA_BFB_1',
               'Brats17_CBICA_BFP_1', 'Brats17_CBICA_BHB_1', 'Brats17_CBICA_BHK_1', 'Brats17_CBICA_BHM_1']
 
+tcia_pids = ['Brats17_TCIA_101_1', 'Brats17_TCIA_103_1', 'Brats17_TCIA_105_1', 'Brats17_TCIA_109_1',
+             'Brats17_TCIA_111_1', 'Brats17_TCIA_113_1', 'Brats17_TCIA_117_1', 'Brats17_TCIA_118_1',
+             'Brats17_TCIA_121_1', 'Brats17_TCIA_130_1', 'Brats17_TCIA_131_1', 'Brats17_TCIA_133_1',
+             'Brats17_TCIA_135_1', 'Brats17_TCIA_138_1', 'Brats17_TCIA_141_1', 'Brats17_TCIA_147_1',
+             'Brats17_TCIA_149_1', 'Brats17_TCIA_150_1', 'Brats17_TCIA_151_1', 'Brats17_TCIA_152_1',
+             'Brats17_TCIA_162_1', 'Brats17_TCIA_165_1', 'Brats17_TCIA_167_1', 'Brats17_TCIA_168_1',
+             'Brats17_TCIA_171_1', 'Brats17_TCIA_175_1', 'Brats17_TCIA_177_1', 'Brats17_TCIA_179_1',
+             'Brats17_TCIA_180_1', 'Brats17_TCIA_184_1', 'Brats17_TCIA_186_1', 'Brats17_TCIA_190_1',
+             'Brats17_TCIA_192_1', 'Brats17_TCIA_198_1', 'Brats17_TCIA_199_1', 'Brats17_TCIA_201_1',
+             'Brats17_TCIA_202_1', 'Brats17_TCIA_203_1', 'Brats17_TCIA_205_1', 'Brats17_TCIA_208_1',
+             'Brats17_TCIA_211_1', 'Brats17_TCIA_218_1', 'Brats17_TCIA_221_1', 'Brats17_TCIA_222_1',
+             'Brats17_TCIA_226_1', 'Brats17_TCIA_231_1', 'Brats17_TCIA_234_1', 'Brats17_TCIA_235_1',
+             'Brats17_TCIA_241_1', 'Brats17_TCIA_242_1', 'Brats17_TCIA_247_1', 'Brats17_TCIA_249_1',
+             'Brats17_TCIA_254_1', 'Brats17_TCIA_255_1', 'Brats17_TCIA_257_1', 'Brats17_TCIA_261_1',
+             'Brats17_TCIA_265_1', 'Brats17_TCIA_266_1', 'Brats17_TCIA_274_1', 'Brats17_TCIA_276_1',
+             'Brats17_TCIA_277_1', 'Brats17_TCIA_278_1', 'Brats17_TCIA_280_1', 'Brats17_TCIA_282_1',
+             'Brats17_TCIA_283_1', 'Brats17_TCIA_290_1', 'Brats17_TCIA_296_1', 'Brats17_TCIA_298_1',
+             'Brats17_TCIA_299_1', 'Brats17_TCIA_300_1', 'Brats17_TCIA_307_1', 'Brats17_TCIA_309_1',
+             'Brats17_TCIA_310_1', 'Brats17_TCIA_312_1', 'Brats17_TCIA_314_1', 'Brats17_TCIA_319_1',
+             'Brats17_TCIA_321_1', 'Brats17_TCIA_322_1', 'Brats17_TCIA_325_1', 'Brats17_TCIA_328_1',
+             'Brats17_TCIA_330_1', 'Brats17_TCIA_331_1', 'Brats17_TCIA_332_1', 'Brats17_TCIA_335_1',
+             'Brats17_TCIA_338_1', 'Brats17_TCIA_343_1', 'Brats17_TCIA_346_1', 'Brats17_TCIA_351_1',
+             'Brats17_TCIA_361_1', 'Brats17_TCIA_368_1', 'Brats17_TCIA_370_1', 'Brats17_TCIA_372_1',
+             'Brats17_TCIA_374_1', 'Brats17_TCIA_375_1', 'Brats17_TCIA_377_1', 'Brats17_TCIA_378_1',
+             'Brats17_TCIA_387_1', 'Brats17_TCIA_390_1', 'Brats17_TCIA_393_1', 'Brats17_TCIA_394_1',
+             'Brats17_TCIA_396_1', 'Brats17_TCIA_401_1', 'Brats17_TCIA_402_1', 'Brats17_TCIA_406_1',
+             'Brats17_TCIA_408_1', 'Brats17_TCIA_409_1', 'Brats17_TCIA_410_1', 'Brats17_TCIA_411_1',
+             'Brats17_TCIA_412_1', 'Brats17_TCIA_413_1', 'Brats17_TCIA_419_1', 'Brats17_TCIA_420_1',
+             'Brats17_TCIA_425_1', 'Brats17_TCIA_428_1', 'Brats17_TCIA_429_1', 'Brats17_TCIA_430_1',
+             'Brats17_TCIA_436_1', 'Brats17_TCIA_437_1', 'Brats17_TCIA_442_1', 'Brats17_TCIA_444_1',
+             'Brats17_TCIA_448_1', 'Brats17_TCIA_449_1', 'Brats17_TCIA_451_1', 'Brats17_TCIA_455_1',
+             'Brats17_TCIA_460_1', 'Brats17_TCIA_462_1', 'Brats17_TCIA_466_1', 'Brats17_TCIA_469_1',
+             'Brats17_TCIA_470_1', 'Brats17_TCIA_471_1', 'Brats17_TCIA_473_1', 'Brats17_TCIA_474_1',
+             'Brats17_TCIA_478_1', 'Brats17_TCIA_479_1', 'Brats17_TCIA_480_1', 'Brats17_TCIA_490_1',
+             'Brats17_TCIA_491_1', 'Brats17_TCIA_493_1', 'Brats17_TCIA_498_1', 'Brats17_TCIA_499_1',
+             'Brats17_TCIA_603_1', 'Brats17_TCIA_605_1', 'Brats17_TCIA_606_1', 'Brats17_TCIA_607_1',
+             'Brats17_TCIA_608_1', 'Brats17_TCIA_615_1', 'Brats17_TCIA_618_1', 'Brats17_TCIA_620_1',
+             'Brats17_TCIA_621_1', 'Brats17_TCIA_623_1', 'Brats17_TCIA_624_1', 'Brats17_TCIA_625_1',
+             'Brats17_TCIA_628_1', 'Brats17_TCIA_629_1', 'Brats17_TCIA_630_1', 'Brats17_TCIA_632_1',
+             'Brats17_TCIA_633_1', 'Brats17_TCIA_634_1', 'Brats17_TCIA_637_1', 'Brats17_TCIA_639_1',
+             'Brats17_TCIA_640_1', 'Brats17_TCIA_642_1', 'Brats17_TCIA_644_1', 'Brats17_TCIA_645_1',
+             'Brats17_TCIA_650_1', 'Brats17_TCIA_653_1', 'Brats17_TCIA_654_1']
+
 def connect_to_bucket(bucket_name):
     """
     Connects to the S3 bucket indicated with bucket_name.
@@ -132,36 +175,6 @@ def save_nifti_file_local(data, file_path):
 
     image = nib.Nifti1Image(data, affine=np.eye(4))
     nib.save(image, file_path)
-
-
-def contrast_pass(data, multi_cat=True):
-    """
-    Combines contrasts together in a single numpy array.
-    If only one data element, returns an array with an expanded dimension.
-    Takes in data_list, a list of numpy arrays.
-    Returns a numpy array.
-    """
-    new_data = np.array(data)
-    #
-    return new_data
-
-
-def category_pass(data, multi_cat=True):
-    """
-    Splits label into multiple categories.
-    If multi_cat is True, runs a pass to reduce all nonzero values to 1 (for a single category).
-    Takes in data, a numpy array.
-    Returns a numpy array.
-    """
-
-    data_list = []
-    if not multi_cat:
-        data_list.append((data != 0) * 1)
-    else:
-        data_list.extend([(data == 1) * 1,
-                          (data == 2) * 1,
-                          (data == 4) * 1])
-    return np.stack(data_list, axis=-1)
 
 
 class DataProcessor(object):
@@ -223,7 +236,7 @@ class DataProcessor(object):
         self.get_keys()
         print("Done.")
 
-        for i in range(140, len(self.X_keys)):
+        for i in range(0, len(self.X_keys)):
 
             self.X_3d = None
             self.y_3d = None
@@ -354,9 +367,9 @@ class DataProcessor(object):
         for i_max in range(shape_c):
             i_group, max_value = index_max[i_max]
             value_group = y_2d_values[i_group]
-            diff = np.sum(value_group-max_value)
-            if diff < index_best_slice[1]:
-                index_best_slice = (index_max[i_max][0], diff)
+            min = value_group.min()
+            if min > index_best_slice[1]:
+                index_best_slice = (index_max[i_max][0], min)
         return index_best_slice[0]
 
     def save_output(self, i):
@@ -416,7 +429,6 @@ class DataSet(object):
 
         self.X_file_names = ["X-2D-x.nii.gz", "X-2D-y.nii.gz", "X-2D-z.nii.gz"]
         self.y_file_names = ["y-2D-x.nii.gz", "y-2D-y.nii.gz", "y-2D-z.nii.gz"]
-        self.y_predict_file_name = "predict-2d-2000-003.nii.gz"
 
         if bucket_name and prefix_folder:
             self.bucket = connect_to_bucket(bucket_name) if bucket_name else None
@@ -460,7 +472,7 @@ class DataSet(object):
         y_keys = []
         if self.local:
             for root, dirs, files in os.walk(self.local_path):
-                if root.split("/")[-1] in cbica_pids:
+                if root.split("/")[-1] in tcia_pids:
                     for file_name in files:
                         if file_name in self.X_file_names:
                             X_keys.append(os.path.join(root, file_name))
@@ -470,10 +482,10 @@ class DataSet(object):
             for key in self.bucket.list(prefix=self.prefix_folder):
                 file_name = key.name.split("/")[-1]
                 patientID = key.name.split("/")[-2]
-                if patientID in cbica_pids:
+                if patientID in tcia_pids:
                     if file_name in self.X_file_names:
                         X_keys.append(key)
-                    elif key.name in self.y_file_names:
+                    elif key.name.split("/")[-1] in self.y_file_names:
                         y_keys.append(key)
 
         self.X_keys = X_keys
@@ -514,17 +526,23 @@ class DataSet(object):
         else:
             save_nifti_file_S3(data, file_path, self.bucket)
 
-    def save_y_predict(self, model):
+    def save_y_predict(self, model, model_id):
         """
         Save the y prediction data to files (local or S3).
         """
+
         if len(self.y_predict) == 0:
             self.y_predict = self.run_predict(model)
         for i, y_key in enumerate(self.y_keys):
             if self.local:
-                y_predict_file_path = "/".join(y_key.split("/")[:-1]) + "/" + self.y_predict_file_name
+                root_path = "/".join(y_key.split("/")[:-1])
+                y_file = y_key.split("/")[-1].split(".")[0]
             else:
-                y_predict_file_path = "/".join(y_key.name.split("/")[:-1]) + "/" + self.y_predict_file_name
+                root_path = "/".join(y_key.name.split("/")[:-1])
+                y_file = y_key.name.split("/")[-1].split(".")[0]
+
+            y_predict_file_path = root_path + "/" + y_file + "-" + model_id + ".nii.gz"
+
             self.save_nifti_file(self.y_predict[i], y_predict_file_path)
 
     def run_predict(self, model):
@@ -556,7 +574,7 @@ class DataSet(object):
 if __name__ == '__main__':
 
     local = True
-    process = False
+    process = True
 
     if local and process:
         dp = DataProcessor(local_path=config.local_path)
@@ -571,4 +589,4 @@ if __name__ == '__main__':
         ds = DataSet(config.bucket_name, "train")
         ds.load_dataset()
 
-    print("Complete")
+    print("Complete.")
