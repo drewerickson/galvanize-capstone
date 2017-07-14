@@ -1,7 +1,7 @@
 # Galvanize Capstone Project
 
-Drew Erickson, Ph.D
-Galvanize, Inc.
+#####Drew Erickson, Ph.D
+#####Galvanize, Inc.
 
 This repository is for the Galvanize Capstone Project built in July 2017 for the Data Science Immersive, Cohort 42.
 
