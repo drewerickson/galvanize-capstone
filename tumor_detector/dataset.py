@@ -356,7 +356,7 @@ class DataSet(object):
 
     def get_key(self, patient, data_type, data_bin):
         full_path = self.get_full_path(patient, data_type, data_bin)
-        if local:
+        if self.local:
             return full_path
         else:
             key = self.bucket.get_key(full_path)
@@ -365,7 +365,7 @@ class DataSet(object):
             return key
 
     def get_full_path(self, patient, data_type, data_bin):
-        if local:
+        if self.local:
             return self.local_path + patient + "/" + self.get_file_name(data_type, data_bin)
         else:
             return self.prefix_folder + patient + "/" + self.get_file_name(data_type, data_bin)
