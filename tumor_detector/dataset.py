@@ -432,12 +432,15 @@ class DataSet(object):
         Save the y prediction data to files (local or S3).
         """
 
-        predict = model.predict(self.X())
+        predict_array = model.predict(self.X())
+        predicts = []
+        for i in range(predict_array.shape[0]):
+            predicts.append(predict_array[i])
 
         for patient in self.data.keys():
             for data_type in self.data_types:
                 key = self.get_key(patient, data_type, self.predict_bin)
-                data = predict.pop(0)
+                data = predicts.pop(0)
                 new_bin = {self.predict_bin: {"key": key, "data": data}}
                 self.data[patient][data_type].update(new_bin)
                 self.save_nifti_file(data, key)
