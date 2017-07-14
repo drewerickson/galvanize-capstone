@@ -8,7 +8,7 @@ This repository is for the Galvanize Capstone Project built in July 2017 for the
 ### Summary
 
 Medical imaging data is growing in scale, but the primary source of analysis is human.  In addition, the data from these
-techniques is reduced into a visual spectrum to accomodate the human visual system.  Teaching machines to detect
+techniques is reduced into a visual spectrum to accommodate the human visual system.  Teaching machines to detect
 anomalies in these images will reduce the time to appropriate treatment and may reveal additional relevant information 
 contained in the original data structure.  MRI scan data for patients with glioblastomas represent an optimal challenge 
 for this work, due to the quality of data and the advancement of the processing tools.  Here, I used labeled MRI scans 
