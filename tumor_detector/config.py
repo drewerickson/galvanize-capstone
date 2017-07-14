@@ -1,10 +1,12 @@
 import json
 
+# CSV variables
 column_id = "Brats17ID"
 column_grade = "Grade"
 column_age = "Age"
 column_survival = "Survival"
 
+# Restructuring Variables
 path_train_survival_data = "/data/brats17_orig/train/survival_data.csv"
 path_train_survival = "/data/brats17_orig/train/survival.csv"
 path_hgg = "/data/brats17_orig/train/HGG/"
@@ -13,10 +15,12 @@ path_lgg = "/data/brats17_orig/train/LGG/"
 grade_hgg = "HGG"
 grade_lgg = "LGG"
 
+# Data Variables
 local_path = "/data/brats17/train/"
-
 bucket_name = "dte-brats17"
 prefix_folder = "train/"
+
+# AWS Access Variables
 creds_file = "/data/creds/aws.json"  # local
 # creds_file = "aws.json"  # EC2
 creds_access_key_name = "access-key"
@@ -28,6 +32,11 @@ with open(creds_file) as f:
     json_data = json.load(f)
     access_key = json_data[creds_access_key_name]
     secret_access_key = json_data[creds_secret_access_key_name]
+
+# Model Variables
+model_folder = "/data/brats17/models"
+
+# Data Selection Variables
 
 # This is a curated set of patients that have greater than 1% voxels in each of the three tumor categories
 robust_pids = ['Brats17_2013_11_1',
