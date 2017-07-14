@@ -1,45 +1,23 @@
 # Galvanize Capstone Project
 
-## Conducted by: Drew Erickson
+Drew Erickson, Ph.D
+Galvanize, Inc.
 
-This repository is for the Galvanize Capstone Project that I will be completing in July 2016 for the Data Science Immersive, Cohort 42.
+This repository is for the Galvanize Capstone Project built in July 2017 for the Data Science Immersive, Cohort 42.
 
-## Capstone Project Proposals:
+Multimodal Brain Tumor Segmentation from Magnetic Resonance Imaging (MRI) Scans
 
-### 1) Detection of patients at risk for hospital readmission
- 
-Hospital readmissions are a costly portion of hospital and insurance costs, so detection of patients at risk for 
-readmission can allow preventative interventions to be taken.  This work can be generalized to any readmission in an
-urgent care setting, or specified towards a specific health condition (like diabetes).  Research such as this 
-(https://arxiv.org/pdf/1602.04257.pdf) address methods to approach this problem.  I will likely approach this as a 
-classification problem, with a number of interpretive and predictive models.  The presentation will likely involve
-graphs showing the accuracy, precision and recall of various models, along with comparisons of the usefulness of 
-different attributes.  One possible source of datasets for this work is here:
-- https://mimic.physionet.org/
+### Summary
 
-### 2) Identification of anomalies in radiological scan images
+Medical imaging data is growing in scale, but the primary source of analysis is human.  Teaching machines to detect
+anomalies in these images will reduce the time to appropriate treatment.  MRI scan data for patients with glioblastomas 
+represent an optimal challenge for this work, due to the quality of data and the advancement of the processing tools.
+Here, I used labeled MRI scans provided by the [BraTS 2017 Challenge](http://braintumorsegmentation.org/), consisting of 
+T1, T1-Gd, T2, and FLAIR scans with labels for necrotic tumor, Gd-enhancing tumor, and peritumoral edema.  My approach
+was to use a U-Net convolutional neural network model framework, with the addition of batch normalization and inverted 
+dropout.  Scan types were stacked together (similar to visual channels), and an additional brain tissue label was 
+generated.  Optimal 2D slices were selected for each volume.  Results for this approach will be added soon.
 
-Radiological data is growing in scale, but the primary source of analysis is human.  Teaching machines to detect
-anomalies in these images will reduce the time to appropriate treatment.  This problem can have a number of specific
-variations, based on anatomical location focus and/or anomaly type.  A common one would be cancerous tumors in a region
-of the torso, such as this work on breast cancer detection (http://stm.sciencemag.org/content/3/108/108ra113).  This is
-primarily an image classification problem.  Some possible ways to approach this problem are discussed here 
-(https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3372692/#S14title), although it also seems likely that this problem may 
-involve more recent advances in deep learning, as seen discussed here (https://rubinlab.stanford.edu/publications).  
-The presentation will involve graphs explaining the model selection and showing the effectiveness of the model.  Some 
-possible datasets for this work are here:
-- http://www.cancerimagingarchive.net/
-- http://langlotzlab.stanford.edu/projects/medical-image-net/
-- http://www.cardiacatlas.org/studies/sunnybrook-cardiac-data/
- 
-### 3) Identifying health issues through wearable-collected biometrics
- 
-Wearable devices and mobile phone apps can collect data through common inputs (accelerometers, microphone) that
-can be used to detect health issues before they lead to a hospital visit, allowing users to intervene early and improve
-their future health.  This problem has a number of specific formulations to tackle, depending on the type of wearable
-you are collecting data from.  This is likely a classification problem in which a particular set of health conditions
-(such as depression, insomnia, sleep apnea, and/or cardio health) relevant to the data are selected for detection.
-Presentation will involve showing how the limited dataset can distinguish the health condition(s) and showing the
-effectiveness of the model.  Sources for this data are undetermined at this time, but would likely come from a company
-producing a wearable device or mobile phone app.
+### Methods and Discussion
 
+More detailed description of the work will be added soon.
