@@ -1,11 +1,9 @@
-# Galvanize Capstone Project
+# Multimodal Brain Tumor Segmentation from Magnetic Resonance Imaging (MRI) Scans
 
 Drew Erickson  
 [Galvanize, Inc.](https://www.galvanize.com/san-francisco)  
 
 This repository is for the Galvanize Capstone Project built in July 2017 for the Data Science Immersive, Cohort 42.
-
-## Multimodal Brain Tumor Segmentation from Magnetic Resonance Imaging (MRI) Scans
 
 ### Summary
 
