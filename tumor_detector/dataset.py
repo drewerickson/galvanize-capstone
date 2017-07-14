@@ -3,6 +3,7 @@ import os
 import boto
 import nibabel as nib
 import numpy as np
+from sklearn.metrics import f1_score
 
 
 def connect_to_bucket(bucket_name):
@@ -338,6 +339,8 @@ class DataSet(object):
         self.train_patients = None
         self.test_patients = None
 
+        self.prediction_metrics = None
+
     def load_dataset(self, patients):
         """
         Loads X and y datasets for the specified patient IDs.
@@ -427,10 +430,17 @@ class DataSet(object):
                 data_subset.append(self.data[patient][data_type][data_bin]["data"])
         return np.stack(data_subset, axis=0)
 
-    def predict(self, model, model_id):
+    def predict(self, model, model_id, metrics=f1_score):
         """
         Save the y prediction data to files (local or S3).
         """
+
+        self.prediction_metrics = []
+        predict_test_array = model.predict(self.X_test())
+        predict_test_array = (predict_test_array > 0.5)*1
+        y_test = self.y_test()
+        for i in range(predict_test_array.shape[-1]):
+            self.prediction_metrics.append(metrics(y_test[..., i].flatten(), predict_test_array[..., i].flatten()))
 
         predict_array = model.predict(self.X())
         predicts = []
