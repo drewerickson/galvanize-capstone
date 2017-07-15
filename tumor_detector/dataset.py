@@ -3,7 +3,6 @@ import os
 import boto
 import nibabel as nib
 import numpy as np
-from sklearn.metrics import f1_score
 
 
 def connect_to_bucket(bucket_name):
@@ -395,7 +394,7 @@ class DataSet(object):
     def y(self):
         return self.get_data_subset(self.data.keys(), "y")
 
-    def train_test_split(self, train_pct=0.8):
+    def build_train_test_split(self, train_pct=0.8):
         """
         Creates a random set of patient IDs for selecting a subset of patient data for a train / test split.
         """
@@ -405,6 +404,9 @@ class DataSet(object):
         self.train_patients = [patients[i] for i in index_train]
         self.test_patients = [patients[i] for i in index_test]
 
+        return self.X_train(), self.X_test(), self.y_train(), self.y_test()
+
+    def get_train_test_split(self):
         return self.X_train(), self.X_test(), self.y_train(), self.y_test()
 
     def X_train(self):
@@ -430,18 +432,25 @@ class DataSet(object):
                 data_subset.append(self.data[patient][data_type][data_bin]["data"])
         return np.stack(data_subset, axis=0)
 
-    def predict(self, model, model_id, metrics=f1_score):
+    def predict_metrics(self, model, metric):
         """
         Save the y prediction data to files (local or S3).
         """
 
-        self.prediction_metrics = []
+        self.prediction_metrics = {}
         predict_test_array = model.predict(self.X_test())
-        predict_test_array = (predict_test_array > 0.5)*1
+        num_classes = predict_test_array.shape[-1]
+        predict_test_array[predict_test_array < 0.5] = 0
+        predict_test_array = np.argmax(predict_test_array, axis=-1)
+        predict_classified = []
+        for c in range(num_classes):
+            predict_classified.append((predict_test_array == c) * 1)
+        predict_classified = np.stack(predict_classified, axis=-1)
         y_test = self.y_test()
-        for i in range(predict_test_array.shape[-1]):
-            self.prediction_metrics.append(metrics(y_test[..., i].flatten(), predict_test_array[..., i].flatten()))
+        for i in range(num_classes):
+            self.prediction_metrics.update({i: metric(y_test[..., i].flatten(), predict_classified[..., i].flatten())})
 
+    def predict(self, model, model_id):
         predict_array = model.predict(self.X())
         predicts = []
         for i in range(predict_array.shape[0]):
@@ -449,7 +458,7 @@ class DataSet(object):
 
         for patient in self.data.keys():
             for data_type in self.data_types:
-                key = self.get_key(patient, data_type, self.predict_bin)
+                key = self.get_key(patient, data_type + "-" + model_id, self.predict_bin)
                 data = predicts.pop(0)
                 new_bin = {self.predict_bin: {"key": key, "data": data}}
                 self.data[patient][data_type].update(new_bin)
@@ -477,7 +486,7 @@ if __name__ == '__main__':
     elif local and (not process):
         ds = DataSet(local_path=config.local_path)
         ds.load_dataset(config.pids_of_interest)
-        X_train, X_test, y_train, y_test = ds.train_test_split()
+        X_train, X_test, y_train, y_test = ds.build_train_test_split()
         X = ds.X()
         y = ds.y()
     elif (not local) and process:
@@ -486,7 +495,7 @@ if __name__ == '__main__':
     elif not(local and process):
         ds = DataSet(config.bucket_name, config.prefix_folder)
         ds.load_dataset(config.pids_of_interest)
-        X_train, X_test, y_train, y_test = ds.train_test_split()
+        X_train, X_test, y_train, y_test = ds.build_train_test_split()
         X = ds.X()
         y = ds.y()
 
