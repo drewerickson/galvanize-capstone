@@ -226,6 +226,7 @@ pids_of_interest = cbi_pids_hq
 pids_of_interest.extend(fir_pids_hq)
 pids_of_interest.extend(tci_pids_hq)
 
+# pids_of_interest = cbica_pids
 # test_pids = ['Brats17_CBICA_AAB_1', 'Brats17_CBICA_AAG_1', 'Brats17_CBICA_AAL_1', 'Brats17_CBICA_AAP_1',
 #               'Brats17_CBICA_ABB_1', 'Brats17_CBICA_ABE_1', 'Brats17_CBICA_ABM_1', 'Brats17_CBICA_ABN_1',
 #               'Brats17_CBICA_ABO_1', 'Brats17_CBICA_ABY_1', 'Brats17_CBICA_ALN_1', 'Brats17_CBICA_ALU_1',
