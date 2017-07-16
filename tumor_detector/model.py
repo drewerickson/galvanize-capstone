@@ -1,176 +1,247 @@
 import config
+import numpy as np
 from dataset import DataSet
 from keras.layers import Input, concatenate, BatchNormalization
-from keras.layers.convolutional import Conv3D, MaxPooling3D, UpSampling3D, Conv2D, MaxPooling2D, UpSampling2D
-from keras.layers.core import Dropout
+from keras.layers.convolutional import Conv2D, MaxPooling2D, UpSampling2D
+from keras.layers.core import Activation, Dropout
 from keras.losses import binary_crossentropy
 from keras.models import Model
 from keras.optimizers import Adam, SGD
+from keras.callbacks import ModelCheckpoint, Callback
 
 
-def model_3d(channels=4, categories=2, optimizer=Adam()):
+def convolution_pooling_2d_pass(layer00, filters=64, kernel_size=(3, 3),
+                                activation='relu', border_mode='same', pool_size=(2, 2), strides=(2, 2)):
+    """
+    Keras model pass for 2D convolution / pooling.
+    layer00: Input data
+    filters: number of neurons
+    kernel_size: window of convolution
+    activation: string or function for the activation step
+    border_mode: how to handle convolution of data at the borders
+    pool_size: grouping size for pooling
+    strides: distance between pooling groups
+    """
+    layer01 = Conv2D(filters, kernel_size, border_mode=border_mode)(layer00)
+    layer02 = BatchNormalization()(layer01)
+    layer03 = Activation(activation)(layer02)
+    layer04 = MaxPooling2D(pool_size=pool_size, strides=strides)(layer03)
+    return layer04
 
-    conv_kernel = (3, 3, 3)
-    pool_size = (2, 2, 2)
-    pool_strides = (2, 2, 2)
 
-    layer00 = Input(shape=(240, 240, 240, channels))
-    layer00_2 = BatchNormalization()(layer00)
+def convolution_upsample__2d_pass(layer00, filters=64, kernel_size=(3, 3),
+                                  activation='relu', border_mode='same', size=(2, 2)):
+    """
+    Keras model pass for 2D convolution / upscaling.
+    layer00: Input data
+    filters: number of neurons
+    kernel_size: window of convolution
+    activation: string or function for the activation step
+    border_mode: how to handle convolution of data at the borders
+    size: increase factor for upscaling
+    """
+    layer01 = Conv2D(filters, kernel_size, border_mode=border_mode)(layer00)
+    layer02 = BatchNormalization()(layer01)
+    layer03 = Activation(activation)(layer02)
+    layer04 = UpSampling2D(size=size)(layer03)
+    return layer04
 
-    layer01 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer00_2)
-    layer02 = MaxPooling3D(pool_size=pool_size, strides=pool_strides)(layer01)
 
-    layer03 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer02)
-    layer04 = MaxPooling3D(pool_size=pool_size, strides=pool_strides)(layer03)
+def model_2d_unet(channels=4, categories=2, optimizer=Adam()):
+    """
+    Keras model based on UNet CNN.
+    channels: number of input data channels
+    categories: number of output data categories
+    optimizer: method used for stochastic gradient descent
+    """
+    layer00 = Input(shape=(240, 240, channels))
 
-    layer05 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer04)
-    layer06 = MaxPooling3D(pool_size=pool_size, strides=pool_strides)(layer05)
+    layer01 = convolution_pooling_2d_pass(layer00)
+    layer02 = convolution_pooling_2d_pass(layer01)
+    layer03 = convolution_pooling_2d_pass(layer02)
+    layer04 = convolution_pooling_2d_pass(layer03)
 
-    layer07 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer06)
-    layer08 = MaxPooling3D(pool_size=pool_size, strides=pool_strides)(layer07)
+    layer05 = convolution_upsample__2d_pass(layer04)
+    concat01 = concatenate([layer03, layer05])
+    layer06 = convolution_upsample__2d_pass(concat01)
+    concat02 = concatenate([layer02, layer06])
+    layer07 = convolution_upsample__2d_pass(concat02)
+    concat03 = concatenate([layer01, layer07])
+    layer08 = convolution_upsample__2d_pass(concat03)
+    concat04 = concatenate([layer00, layer08])
 
-    layer09 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(layer08)
-    layer10 = UpSampling3D(size=pool_size)(layer09)
+    layer09 = Conv2D(64, (3, 3), border_mode='same')(concat04)
+    layer10 = BatchNormalization()(layer09)
+    layer11 = Activation('relu')(layer10)
+    layer12 = Conv2D(categories, (1, 1), activation='sigmoid', border_mode='same')(layer11)
 
-    concat01 = concatenate([layer07, layer10])
-
-    layer11 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(concat01)
-    layer12 = UpSampling3D(size=pool_size)(layer11)
-
-    concat02 = concatenate([layer05, layer12])
-
-    layer13 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(concat02)
-    layer14 = UpSampling3D(size=pool_size)(layer13)
-
-    concat03 = concatenate([layer03, layer14])
-
-    layer15 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(concat03)
-    layer16 = UpSampling3D(size=pool_size)(layer15)
-
-    concat04 = concatenate([layer01, layer16])
-
-    layer17 = Conv3D(64, conv_kernel, activation='relu', border_mode='same')(concat04)
-    layer18 = Conv3D(categories, (1, 1, 1), activation='sigmoid', border_mode='same')(layer17)
-
-    model = Model(layer00, layer18)
+    model = Model(layer00, layer12)
 
     model.compile(loss=binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
 
     return model
 
 
-def model_2d(channels=4, categories=2, optimizer=Adam()):
-
+def model_2d_unet_with_drop(channels=4, categories=2, optimizer=Adam()):
+    """
+    Keras model based on UNet CNN.  Adds dropout layers after most of the passes.
+    channels: number of input data channels
+    categories: number of output data categories
+    optimizer: method used for stochastic gradient descent
+    """
     layer00 = Input(shape=(240, 240, channels))
-    layer00_2 = BatchNormalization()(layer00)
 
-    layer01 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer00_2)
-    layer02 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer01)
+    layer01 = convolution_pooling_2d_pass(layer00)
+    layer02 = Dropout(0.5)(layer01)
+    layer03 = convolution_pooling_2d_pass(layer02)
+    layer04 = Dropout(0.4)(layer03)
+    layer05 = convolution_pooling_2d_pass(layer04)
+    layer06 = Dropout(0.3)(layer05)
+    layer07 = convolution_pooling_2d_pass(layer06)
+    layer08 = Dropout(0.2)(layer07)
 
-    layer03 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer02)
-    layer04 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer03)
-
-    layer05 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer04)
-    layer06 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer05)
-
-    layer07 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer06)
-    layer08 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer07)
-
-    layer09 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer08)
-    layer10 = UpSampling2D(size=(2, 2))(layer09)
-
-    concat01 = concatenate([layer07, layer10])
-
-    layer11 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat01)
-    layer12 = UpSampling2D(size=(2, 2))(layer11)
-
-    concat02 = concatenate([layer05, layer12])
-
-    layer13 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat02)
-    layer14 = UpSampling2D(size=(2, 2))(layer13)
-
-    concat03 = concatenate([layer03, layer14])
-
-    layer15 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat03)
-    layer16 = UpSampling2D(size=(2, 2))(layer15)
-
-    concat04 = concatenate([layer01, layer16])
-
-    layer17 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat04)
-    layer18 = Conv2D(categories, (1, 1), activation='sigmoid', border_mode='same')(layer17)
-
-    model = Model(layer00, layer18)
-
-    model.compile(loss=binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
-
-    return model
-
-
-def model_2d_with_drop(channels=4, categories=2, optimizer=Adam()):
-
-    layer00 = Input(shape=(240, 240, channels))
-    layer00_2 = BatchNormalization()(layer00)
-
-    layer01 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer00_2)
-    layer02 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer01)
-    layer03 = Dropout(0.5)(layer02)
-
-    layer04 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer03)
-    layer05 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer04)
-    layer06 = Dropout(0.4)(layer05)
-
-    layer07 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer06)
-    layer08 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer07)
-    layer09 = Dropout(0.3)(layer08)
-
-    layer10 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer09)
-    layer11 = MaxPooling2D(pool_size=(2, 2), strides=(2, 2))(layer10)
+    layer09 = convolution_upsample__2d_pass(layer08)
+    layer10 = Dropout(0.2)(layer09)
+    concat01 = concatenate([layer06, layer10])
+    layer11 = convolution_upsample__2d_pass(concat01)
     layer12 = Dropout(0.2)(layer11)
+    concat02 = concatenate([layer04, layer12])
+    layer13 = convolution_upsample__2d_pass(concat02)
+    layer14 = Dropout(0.2)(layer13)
+    concat03 = concatenate([layer02, layer14])
+    layer15 = convolution_upsample__2d_pass(concat03)
+    layer16 = Dropout(0.2)(layer15)
+    concat04 = concatenate([layer00, layer16])
 
-    layer13 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(layer12)
-    layer14 = UpSampling2D(size=(2, 2))(layer13)
-    layer15 = Dropout(0.2)(layer14)
+    layer17 = Conv2D(64, (3, 3), border_mode='same')(concat04)
+    layer18 = BatchNormalization()(layer17)
+    layer19 = Activation('relu')(layer18)
+    layer20 = Conv2D(categories, (1, 1), activation='sigmoid', border_mode='same')(layer19)
 
-    concat01 = concatenate([layer10, layer15])
-
-    layer16 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat01)
-    layer17 = UpSampling2D(size=(2, 2))(layer16)
-    layer18 = Dropout(0.2)(layer17)
-
-    concat02 = concatenate([layer07, layer18])
-
-    layer19 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat02)
-    layer20 = UpSampling2D(size=(2, 2))(layer19)
-    layer21 = Dropout(0.2)(layer20)
-
-    concat03 = concatenate([layer04, layer21])
-
-    layer22 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat03)
-    layer23 = UpSampling2D(size=(2, 2))(layer22)
-    layer24 = Dropout(0.2)(layer23)
-
-    concat04 = concatenate([layer01, layer24])
-
-    layer25 = Conv2D(64, (3, 3), activation='relu', border_mode='same')(concat04)
-    layer26 = Conv2D(categories, (1, 1), activation='sigmoid', border_mode='same')(layer25)
-
-    model = Model(layer00, layer26)
+    model = Model(layer00, layer20)
 
     model.compile(loss=binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
 
     return model
+
+
+def model_2d_1up(channels=4, categories=2, optimizer=Adam()):
+    """
+    Keras model with a one-step upscale pass.
+    channels: number of input data channels
+    categories: number of output data categories
+    optimizer: method used for stochastic gradient descent
+    """
+    layer00 = Input(shape=(240, 240, channels))
+
+    layer01 = convolution_pooling_2d_pass(layer00, kernel_size=(5, 5))
+    layer02 = convolution_pooling_2d_pass(layer01, kernel_size=(5, 5))
+    layer03 = convolution_pooling_2d_pass(layer02, kernel_size=(5, 5))
+    layer04 = convolution_pooling_2d_pass(layer03, kernel_size=(5, 5))
+
+    layer05 = convolution_upsample__2d_pass(layer04, size=(16, 16))
+    concat01 = concatenate([layer00, layer05])
+
+    layer09 = Conv2D(64, (3, 3), border_mode='same')(concat01)
+    layer10 = BatchNormalization()(layer09)
+    layer11 = Activation('relu')(layer10)
+    layer12 = Conv2D(categories, (1, 1), activation='sigmoid', border_mode='same')(layer11)
+
+    model = Model(layer00, layer12)
+
+    model.compile(loss=binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
+
+    return model
+
+
+def model_2d_1up_with_drop(channels=4, categories=2, optimizer=Adam()):
+    """
+    Keras model with a one-step upscale pass.  Adds dropout layers after most of the passes.
+    channels: number of input data channels
+    categories: number of output data categories
+    optimizer: method used for stochastic gradient descent
+    """
+    layer00 = Input(shape=(240, 240, channels))
+
+    layer01 = convolution_pooling_2d_pass(layer00, kernel_size=(5, 5))
+    layer02 = Dropout(0.5)(layer01)
+    layer03 = convolution_pooling_2d_pass(layer02, kernel_size=(5, 5))
+    layer04 = Dropout(0.5)(layer03)
+    layer05 = convolution_pooling_2d_pass(layer04, kernel_size=(5, 5))
+    layer06 = Dropout(0.5)(layer05)
+    layer07 = convolution_pooling_2d_pass(layer06, kernel_size=(5, 5))
+    layer08 = Dropout(0.5)(layer07)
+
+    layer09 = convolution_upsample__2d_pass(layer08, size=(16, 16))
+    layer10 = Dropout(0.5)(layer09)
+    concat01 = concatenate([layer00, layer10])
+
+    layer11 = Conv2D(64, (3, 3), border_mode='same')(concat01)
+    layer12 = BatchNormalization()(layer11)
+    layer13 = Activation('relu')(layer12)
+    layer14 = Conv2D(categories, (1, 1), activation='sigmoid', border_mode='same')(layer13)
+
+    model = Model(layer00, layer14)
+
+    model.compile(loss=binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
+
+    return model
+
+
+def dice_coeff(y_true, y_pred):
+    """
+    Calculates the Dice coefficient for the given true y and predicted y data.
+    """
+    return np.sum(y_pred[y_true == 1]) * 2. / (np.sum(y_pred) + np.sum(y_true))
+
+
+class LossHistory(Callback):
+    """
+    LossHistory is a Callback object that stores the logs after each epoch of a model training session.
+    """
+    def __init__(self):
+        self.logs = None
+
+    def on_train_begin(self, logs={}):
+        self.logs = []
+
+    def on_epoch_end(self, epoch, logs={}):
+        self.logs.append(logs)
 
 
 if __name__ == '__main__':
+    """
+    Main script for running Keras neural network models.
+    
+    """
 
     print("Job Started!")
 
-    model_id = "2000-drop-000"
+    model_id = "100-2d_unet_with_drop-brainN-multiY-histN-000"
     local = True
+    brain_cat = False
+    multi_cat = True
+    num_cats = 3
+    hist_equal = False
+    build_test = False
     set_optimizer = "adam"
-    model_to_test = "2D"
-    num_cats = 4
-    train = True
+    model_to_test = "2d_unet_with_drop"  # "2d_unet", "2d_unet_with_drop", "2d_1up", "2d_1up_with_drop"
+    epochs = 100
+    train = False
+    save_predict = False
+
+    print("Model ID: ", model_id)
+    print("Local Data: ", local)
+    print("Brain Mask Included: ", brain_cat)
+    print("Multiple Categories: ", multi_cat)
+    print("Number of Categories: ", num_cats)
+    print("Histogram Equalization Used: ", hist_equal)
+    print("Build Train / Test Split: ", build_test)
+    print("Optimizer: ", set_optimizer)
+    print("Model Name: ", model_to_test)
+    print("Epochs: ", epochs)
+    print("Model Training: ", train)
+    print("Save Prediction Images: ", save_predict)
 
     print("Initializing DataSet... ", end="", flush=True)
     ds = None
@@ -181,11 +252,16 @@ if __name__ == '__main__':
     print("Done.")
 
     print("Loading Data... ", end="", flush=True)
-    ds.load_dataset(config.pids_of_interest)
+    ds.load_dataset(config.pids_of_interest, brain_cat=brain_cat, hist_equal=hist_equal, multi_cat=multi_cat)
     print("Done.")
 
     print("Train / Test Split... ", end="", flush=True)
-    X_train, X_test, y_train, y_test = ds.train_test_split()
+    if build_test:
+        X_train, X_test, y_train, y_test = ds.build_train_test_split()
+    else:
+        ds.test_patients = config.test_pids
+        ds.train_patients = [patient for patient in ds.data.keys() if patient not in config.test_pids]
+        X_train, X_test, y_train, y_test = ds.get_train_test_split()
     print("Done.")
 
     print("Selecting Optimizer... ", end="", flush=True)
@@ -196,30 +272,56 @@ if __name__ == '__main__':
         optimizer = Adam(lr=0.001, decay=0.001)
     print("Done.")
 
+    print("Initializing Score Metric... ", end="", flush=True)
+    metrics = ['accuracy']  # [f1_score]
+    print("Done.")
+
     print("Train: ", len(X_train))
     print("Test:  ", len(X_test))
     print("Total: ", len(X_train) + len(X_test))
     print("Test Patients: ", ds.test_patients)
 
+    print("Building Checkpoint... ", end="", flush=True)
+    checkpoint = ModelCheckpoint(filepath="weights-" + model_id + ".hdf5", verbose=1, save_best_only=True)
+    print("Done.")
+
+    print("Building History... ", end="", flush=True)
+    loss_history = LossHistory()
+    print("Done.")
+
     print("Initializing Model... ", end="", flush=True)
     model = None
-    if model_to_test == "2D":
-        model = model_2d(categories=num_cats, optimizer=optimizer)
-    elif model_to_test == "2D_drop":
-        model = model_2d_with_drop(categories=num_cats, optimizer=optimizer)
+    if model_to_test == "2d_unet":
+        model = model_2d_unet(categories=num_cats, optimizer=optimizer)
+    elif model_to_test == "2d_unet_with_drop":
+        model = model_2d_unet_with_drop(categories=num_cats, optimizer=optimizer)
+    elif model_to_test == "2d_1up":
+        model = model_2d_1up(categories=num_cats, optimizer=optimizer)
+    elif model_to_test == "2d_1up_with_drop":
+        model = model_2d_1up_with_drop(categories=num_cats, optimizer=optimizer)
     print("Done.")
 
     if train:
         print(model.summary())
-        print("Training Model:")
-        model.fit(X_train, y_train, epochs=3, validation_data=(X_test, y_test))
+        print("Training Model... ", end="", flush=True)
+        model.fit(X_train, y_train, epochs=epochs, validation_data=(X_test, y_test), callbacks=[checkpoint, loss_history])
         print("Done.")
     else:
-        model.load_weights("model-" + model_id + ".h5")
+        print("Loading Model... ", end="", flush=True)
+        model.load_weights(config.model_folder + "/weights-" + model_id + ".hdf5")
 
-    print("Building Prediction... ", end="", flush=True)
-    ds.predict(model, model_id)
+    print("Loss History:")
+    print(loss_history.logs)
+
+    print("Analysing Test Predictions... ", end="", flush=True)
+    ds.predict_metrics(model, dice_coeff)
     print("Done.")
+    print(ds.prediction_metrics)
+
+    if save_predict:
+        print("Saving Prediction Images... ", end="", flush=True)
+        ds.predict(model, model_id)
+        print("Done.")
 
     print("Saving Model... ", end="", flush=True)
     model_json = model.to_json()
