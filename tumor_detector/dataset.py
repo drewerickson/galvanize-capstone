@@ -4,6 +4,7 @@ import boto
 import nibabel as nib
 import numpy as np
 from skimage import exposure
+import json
 
 
 def connect_to_bucket(bucket_name):
@@ -53,6 +54,19 @@ def save_nifti_file_local(data, file_path):
     """
     image = nib.Nifti1Image(data, affine=np.eye(4))
     nib.save(image, file_path)
+
+
+def save_json_file_S3(data, key):
+    temp_file = "temp.json"
+    save_json_file_local(data, temp_file)
+    with open(temp_file, "rb") as f:
+        key.set_contents_from_file(f)
+    os.remove(temp_file)
+
+
+def save_json_file_local(data, file_path):
+    with open(file_path, 'w') as fp:
+        json.dump(data, fp)
 
 
 class DataProcessor(object):
@@ -168,7 +182,7 @@ class DataProcessor(object):
         X_3d = []
         for index_contrast in range(len(X_keygroup)):
             X_input = self.load_nifti_file(X_keygroup[index_contrast])
-            X_3d.append(np.pad(X_input, ((0, 0), (0, 0),(45, 40)), 'constant', constant_values=0))  # z padding to 240
+            X_3d.append(np.pad(X_input, ((0, 0), (0, 0), (45, 40)), 'constant', constant_values=0))  # z padding to 240
             # [40:200, 41:217, 1:145])  # crop with some zero buffer
 
         self.X_3d = np.stack(X_3d, axis=-1)
@@ -558,6 +572,252 @@ class DataSet(object):
         predict[predict < threshold] = 0
         predict[predict > 0] = 1
         return predict
+
+
+class DataSet3D(object):
+    """
+    DataSet3D object holds 3D X and y data sets and related variables.
+    Assumptions about folder structure are made.
+
+    data: dictionary structure with patient data.
+    { patient : 
+        { data bin : 
+            { key :
+              data : 
+            }
+        }
+    }
+    """
+
+    def __init__(self, bucket_name=None, prefix_folder=None, output_folder=None, local_path=None, local_out_path=None):
+        """
+        bucket_name: S3 bucket name
+        prefix_folder: string of folder in S3 bucket where data is stored
+        output_folder: string of folder in S3 where predictions are stored
+        local_path: string of local file path where data is stored
+        local_out_path: string of local file path where predictions are stored
+        """
+        self.X_data_type = "X-3D"
+        self.y_data_type = "y-3D"
+        self.data_bins = [self.X_data_type, self.y_data_type]
+        self.file_type = ".nii.gz"
+
+        if bucket_name and prefix_folder and output_folder:
+            self.local = False
+            self.bucket = connect_to_bucket(bucket_name) if bucket_name else None
+            self.prefix_folder = prefix_folder
+            self.output_folder = output_folder
+        elif local_path and local_out_path:
+            self.local = True
+            self.local_path = local_path
+            self.local_out_path = local_out_path
+
+        self.data = {}
+        self.max_values = None
+        self.train_patients = None
+        self.test_patients = None
+
+        self.prediction_metrics = {}
+
+    def load_dataset(self, patients):
+        """
+        Loads X and y datasets for the specified patients.
+        """
+        for patient in patients:
+            if not self.file_exists(patient):
+                self.data[patient] = {}
+                for data_bin in self.data_bins:
+                    key = self.get_in_key(patient, data_bin)
+                    data = self.load_nifti_file(key)
+                    self.data[patient].update({data_bin: {"key": key, "data": data}})
+
+    def file_exists(self, patient):
+        """
+        Checks to see if prediction file of specified patient exists.
+        Returns True if found, False if not.
+        """
+        if self.local:
+            return os.path.isfile(self.local_out_path + patient + self.file_type)
+        else:
+            file_path = self.prefix_folder + self.output_folder + patient + self.file_type
+            if self.bucket.get_key(file_path):
+                return True
+            else:
+                return False
+
+    def get_in_key(self, patient, data_bin):
+        """
+        Get the data 'key' for the given patient and data bin.
+        Returns the data 'key'.
+        """
+        if self.local:
+            return self.local_path + patient + "/" + data_bin + self.file_type
+        else:
+            full_path = self.prefix_folder + patient + "/" + data_bin + self.file_type
+            return self.bucket.get_key(full_path)
+
+    def get_out_key(self, patient):
+        """
+        Get the prediction output 'key' for the given patient.
+        Returns the data 'key'.
+        """
+        if self.local:
+            return self.local_out_path + patient + self.file_type
+        else:
+            full_path = self.prefix_folder + self.output_folder + patient + self.file_type
+            key = self.bucket.get_key(full_path)
+            if not key:
+                key = self.bucket.new_key(full_path)
+            return key
+
+    def load_nifti_file(self, key):
+        """
+        Loads a NIfTI file at the given 'key'.  Allows local or remote loading, based on class boolean.
+        Returns a numpy array.
+        """
+        if self.local:
+            data = load_nifti_file_local(key)
+        else:
+            data = load_nifti_file_S3(key)
+        return data
+
+    def save_nifti_file(self, data, key):
+        """
+        Save NIfTI data array to file with the 'key'.  Allows local or remote saving, based on class boolean.
+        """
+        if self.local:
+            save_nifti_file_local(data, key)
+        else:
+            save_nifti_file_S3(data, key)
+
+    def save_json_file(self, data, key):
+        """
+        Saves data object to json file at specified 'key'.
+        """
+        if self.local:
+            save_json_file_local(data, key)
+        else:
+            save_json_file_S3(data, key)
+
+    def predict_3d(self, model, metric):
+        """
+        Runs the prediction for the given model of all X data.
+        Model is assumed to take 2D data in.  2D predictions are conducted across each dimension.  The results are 
+        averaged together and then classified to get the cumulative 3D prediction.
+        Prediction metrics are also calculated.
+        Saves the classification result in NIfTI data files, and the metrics in a JSON file,
+        with the patient ID in the name.
+        """
+        print("Starting Prediction.")
+        total_patient = len(self.data.keys())
+        count = 1
+        for patient in self.data.keys():
+            print("Patient ", count, " of ", total_patient, ": ", patient)
+            count += 1
+
+            # prep the 3D data into 2D data across each dimension
+            print("Load Data... ", end="", flush=True)
+            X_3d = self.data[patient][self.X_data_type]["data"]
+            y_3d = self.data[patient][self.y_data_type]["data"]
+            print("Done.")
+
+            print("Slicing X... ", end="", flush=True)
+            X = []
+            X.extend([X_3d[i, :, :, :] for i in range(X_3d.shape[0])])
+            X.extend([X_3d[:, i, :, :] for i in range(X_3d.shape[1])])
+            X.extend([X_3d[:, :, i, :] for i in range(X_3d.shape[2])])
+            X = np.stack(X, axis=0)
+            print("Done.")
+
+            # run the prediction on the 2D data
+            print("Predicting... ", end="", flush=True)
+            predict_array = model.predict(X)
+            print("Done.")
+
+            # assemble the three 3D volume predictions, then average them together.
+            print("Assembling Prediction... ", end="", flush=True)
+            split_size = int(predict_array.shape[0]/3)
+            predict_x = predict_array[:split_size, ...]
+            predict_y = np.swapaxes(predict_array[split_size:split_size*2, ...], 0, 1)
+            predict_z = np.swapaxes(predict_array[split_size*2:, ...], 0, 2)
+            predict_stack = np.stack([predict_x, predict_y, predict_z], axis=0)
+            predict = np.mean(predict_stack, axis=0)
+            print("Done.")
+
+            # classify the resulting 3D volume
+            print("Classifying... ", end="", flush=True)
+            classify = self.predict_to_classify_exclusive(predict)
+            print("Done.")
+
+            # calculate metrics
+            print("Calculating Metrics... ", end="", flush=True)
+            self.prediction_metrics[patient] = {}
+            for ic in range(3):
+                y_true = y_3d[..., ic].flatten()
+                y_pred = classify[..., ic].flatten()
+                if (y_true.max() != 0) & (y_pred.max() != 0):
+                    self.prediction_metrics[patient].update({ic: metric(y_true, y_pred)})
+                else:
+                    self.prediction_metrics[patient].update({ic: "All Zero"})
+            print("Done.")
+            print("Necrotic: ", self.prediction_metrics[patient][0])
+            print("Active:   ", self.prediction_metrics[patient][2])
+            print("Edema:    ", self.prediction_metrics[patient][1])
+
+            print("Building Output Data... ", end="", flush=True)
+            data_out = np.sum(classify*[[[1, 2, 4]]], axis=-1)[:, :, 45:-40]
+            data_out = data_out.astype(np.int16)
+            print("Done.")
+            print("Data Shape: ", data_out.shape)
+
+            # save to file
+            print("Saving File... ", end="", flush=True)
+            key = self.get_out_key(patient)
+            self.save_nifti_file(data_out, key)
+            print("Done.")
+
+            print("Saving Metrics... ", end="", flush=True)
+            json_key = None
+            if self.local:
+                json_key = self.local_out_path + patient + ".json"
+            else:
+                full_path = self.prefix_folder + self.output_folder + patient + ".json"
+                json_key = self.bucket.get_key(full_path)
+                if not json_key:
+                    json_key = self.bucket.new_key(full_path)
+            self.save_json_file(self.prediction_metrics[patient], json_key)
+            print("Done.")
+
+        print("Saving Complete Metrics... ", end="", flush=True)
+        json_key = None
+        if self.local:
+            json_key = self.local_out_path + "metrics.json"
+        else:
+            full_path = self.prefix_folder + self.output_folder + "metrics.json"
+            json_key = self.bucket.get_key(full_path)
+            if not json_key:
+                json_key = self.bucket.new_key(full_path)
+        self.save_json_file(self.prediction_metrics, json_key)
+        print("Done.")
+
+        print("Prediction Complete.")
+
+    def predict_to_classify_exclusive(self, predict, threshold=0.5):
+        """
+        Converts probability data from model prediction into classification data.
+        Makes the category call exclusive (only the category with the largest significant probability).
+        The threshold determines the value above which probabilities are considered significant.
+        Returns the array of classification data.
+        """
+        num_classes = predict.shape[-1]
+        predict[predict < threshold] = 0
+        predict = np.lib.pad(predict, ((0, 0), (0, 0), (0, 0), (1, 0)), 'constant', constant_values=0)
+        predict = np.argmax(predict, axis=-1)
+        classify = []
+        for c in range(1, num_classes+1):
+            classify.append((predict == c) * 1)
+        classify = np.stack(classify, axis=-1)
+        return classify
 
 
 if __name__ == '__main__':
