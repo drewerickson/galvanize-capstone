@@ -17,8 +17,10 @@ grade_lgg = "LGG"
 
 # Data Variables
 local_path = "/data/brats17/train/"
+local_out_path = "/data/brats17/train/predict/"
 bucket_name = "dte-brats17"
 prefix_folder = "train/"
+output_folder = "predict/"
 
 # AWS Access Variables
 creds_file = "/data/creds/aws.json"  # local
@@ -34,7 +36,8 @@ with open(creds_file) as f:
     secret_access_key = json_data[creds_secret_access_key_name]
 
 # Model Variables
-model_folder = "/data/brats17/models"
+model_folder = "/data/brats17/models"  # local
+# model_folder = "models"  # EC2
 
 # Data Selection Variables
 
@@ -226,12 +229,6 @@ pids_of_interest = cbi_pids_hq
 pids_of_interest.extend(fir_pids_hq)
 pids_of_interest.extend(tci_pids_hq)
 
-# pids_of_interest = cbica_pids
-# test_pids = ['Brats17_CBICA_AAB_1', 'Brats17_CBICA_AAG_1', 'Brats17_CBICA_AAL_1', 'Brats17_CBICA_AAP_1',
-#               'Brats17_CBICA_ABB_1', 'Brats17_CBICA_ABE_1', 'Brats17_CBICA_ABM_1', 'Brats17_CBICA_ABN_1',
-#               'Brats17_CBICA_ABO_1', 'Brats17_CBICA_ABY_1', 'Brats17_CBICA_ALN_1', 'Brats17_CBICA_ALU_1',
-#               'Brats17_CBICA_ALX_1', 'Brats17_CBICA_AME_1', 'Brats17_CBICA_AMH_1', 'Brats17_CBICA_ANG_1',
-#               'Brats17_CBICA_ANI_1', 'Brats17_CBICA_ANP_1']
 
 # test_pids = ['Brats17_TCIA_372_1', 'Brats17_TCIA_637_1', 'Brats17_CBICA_BFB_1', 'Brats17_TCIA_299_1',
 #              'Brats17_CBICA_ASH_1', 'Brats17_TCIA_430_1', 'Brats17_TCIA_603_1', 'Brats17_TCIA_310_1',
@@ -255,3 +252,14 @@ test_pids = ['Brats17_TCIA_177_1', 'Brats17_CBICA_AQT_1', 'Brats17_CBICA_ANZ_1',
              'Brats17_TCIA_121_1', 'Brats17_CBICA_AXW_1', 'Brats17_TCIA_430_1', 'Brats17_2013_28_1',
              'Brats17_2013_22_1', 'Brats17_CBICA_AWI_1', 'Brats17_CBICA_AOP_1', 'Brats17_CBICA_ARZ_1',
              'Brats17_2013_11_1', 'Brats17_TCIA_138_1', 'Brats17_CBICA_AVV_1', 'Brats17_TCIA_130_1']
+
+# pids_of_interest = cbica_pids
+# test_pids = ['Brats17_CBICA_AAB_1', 'Brats17_CBICA_AAG_1', 'Brats17_CBICA_AAL_1', 'Brats17_CBICA_AAP_1',
+#               'Brats17_CBICA_ABB_1', 'Brats17_CBICA_ABE_1', 'Brats17_CBICA_ABM_1', 'Brats17_CBICA_ABN_1',
+#               'Brats17_CBICA_ABO_1', 'Brats17_CBICA_ABY_1', 'Brats17_CBICA_ALN_1', 'Brats17_CBICA_ALU_1',
+#               'Brats17_CBICA_ALX_1', 'Brats17_CBICA_AME_1', 'Brats17_CBICA_AMH_1', 'Brats17_CBICA_ANG_1',
+#               'Brats17_CBICA_ANI_1', 'Brats17_CBICA_ANP_1']
+
+all_pids = first_pids
+all_pids.extend(cbica_pids)
+all_pids.extend(tcia_pids)
