@@ -191,6 +191,10 @@ def model_2d_1up_with_drop(channels=4, categories=2, optimizer=Adam()):
 
 
 def metrics_table(y_true, y_pred):
+    """
+    Calculates the confusion matrix and dice coefficient for the given y data.
+    Returns a dictionary containing the values of the metrics.
+    """
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
     dice = dice_coeff(y_true, y_pred)
     return {"dice": dice, "TP": int(tp), "FN": int(fn), "FP": int(fp), "TN": int(tn)}
