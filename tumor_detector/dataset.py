@@ -76,7 +76,7 @@ class DataProcessor(object):
     The results are saved to file in the same location as the original data.
     """
 
-    def __init__(self, bucket_name=None, prefix_folder=None, local_path=None):
+    def __init__(self, bucket_name=None, prefix_folder=None, local_path=None, labeled=True):
         """
         bucket_name: S3 bucket name
         prefix_folder: string of folder in S3 bucket where data is stored
@@ -101,6 +101,8 @@ class DataProcessor(object):
         elif local_path:
             self.local_path = local_path
             self.local = True
+
+        self.labeled = labeled
 
         self.X_keys = None
         self.y_keys = None
@@ -136,7 +138,8 @@ class DataProcessor(object):
 
             print("Processing: ", str(i+1), " of ", str(len(self.X_keys)), " ... ", end="", flush=True)
             self.process_3d(i)
-            self.process_2d()
+            if self.labeled:
+                self.process_2d()
             self.save_output(i)
             print("Done.")
 
@@ -187,20 +190,21 @@ class DataProcessor(object):
 
         self.X_3d = np.stack(X_3d, axis=-1)
 
-        # load the y input, crop/buffer the dims, split it by category, and stack it
-        y_input = self.load_nifti_file(self.y_keys[i])
-        y_3d = np.pad(y_input, ((0, 0), (0, 0), (45, 40)), 'constant', constant_values=0)
-        y_3d = [(y_3d == 1) * 1, (y_3d == 2) * 1, (y_3d == 4) * 1]
+        if self.labeled:
+            # load the y input, crop/buffer the dims, split it by category, and stack it
+            y_input = self.load_nifti_file(self.y_keys[i])
+            y_3d = np.pad(y_input, ((0, 0), (0, 0), (45, 40)), 'constant', constant_values=0)
+            y_3d = [(y_3d == 1) * 1, (y_3d == 2) * 1, (y_3d == 4) * 1]
 
-        # generate a brain mask from X and y data, then add it
-        y_nz = (X_3d[0] != 1) * 1
-        for index_scan in range(len(X_3d)):
-            y_nz *= ((X_3d[index_scan] != 0) * 1)
-        for index_cat in range(len(y_3d)):
-            y_nz *= ((y_3d[index_cat] == 0) * 1)
-        y_3d.append(y_nz)
+            # generate a brain mask from X and y data, then add it
+            y_nz = (X_3d[0] != 1) * 1
+            for index_scan in range(len(X_3d)):
+                y_nz *= ((X_3d[index_scan] != 0) * 1)
+            for index_cat in range(len(y_3d)):
+                y_nz *= ((y_3d[index_cat] == 0) * 1)
+            y_3d.append(y_nz)
 
-        self.y_3d = np.stack(y_3d, axis=-1)
+            self.y_3d = np.stack(y_3d, axis=-1)
 
     def process_2d(self):
         """
@@ -269,18 +273,19 @@ class DataProcessor(object):
         Saves the data arrays for all the relevant data objects.
         """
         if self.local:
-            patient_path = "/".join(self.y_keys[i].split("/")[:-1])
+            patient_path = "/".join(self.X_keys[i][0].split("/")[:-1])
         else:
-            patient_path = "/".join(self.y_keys[i].name.split("/")[:-1])
+            patient_path = "/".join(self.X_keys[i][0].name.split("/")[:-1])
 
         self.save_nifti_file(self.X_3d, patient_path + "/" + self.X_3d_file_name)
-        self.save_nifti_file(self.y_3d, patient_path + "/" + self.y_3d_file_name)
-        self.save_nifti_file(self.X_2d_x, patient_path + "/" + self.X_2d_x_file_name)
-        self.save_nifti_file(self.X_2d_y, patient_path + "/" + self.X_2d_y_file_name)
-        self.save_nifti_file(self.X_2d_z, patient_path + "/" + self.X_2d_z_file_name)
-        self.save_nifti_file(self.y_2d_x, patient_path + "/" + self.y_2d_x_file_name)
-        self.save_nifti_file(self.y_2d_y, patient_path + "/" + self.y_2d_y_file_name)
-        self.save_nifti_file(self.y_2d_z, patient_path + "/" + self.y_2d_z_file_name)
+        if self.labeled:
+            self.save_nifti_file(self.y_3d, patient_path + "/" + self.y_3d_file_name)
+            self.save_nifti_file(self.X_2d_x, patient_path + "/" + self.X_2d_x_file_name)
+            self.save_nifti_file(self.X_2d_y, patient_path + "/" + self.X_2d_y_file_name)
+            self.save_nifti_file(self.X_2d_z, patient_path + "/" + self.X_2d_z_file_name)
+            self.save_nifti_file(self.y_2d_x, patient_path + "/" + self.y_2d_x_file_name)
+            self.save_nifti_file(self.y_2d_y, patient_path + "/" + self.y_2d_y_file_name)
+            self.save_nifti_file(self.y_2d_z, patient_path + "/" + self.y_2d_z_file_name)
 
     def load_nifti_file(self, key):
         """
@@ -827,14 +832,23 @@ if __name__ == '__main__':
     process: If True, runs DataProcessor.  Else, runs DataSet.
     """
 
+    dataset = "valid"
     local = True
-    process = False
+    process = True
 
     if local and process:
-        dp = DataProcessor(local_path=config.local_path)
+        dp = None
+        if dataset == "train":
+            dp = DataProcessor(local_path=config.local_path)
+        elif dataset == "valid":
+            dp = DataProcessor(local_path=config.path_valid_out, labeled=False)
         dp.process_data()
     elif local and (not process):
-        ds = DataSet(local_path=config.local_path)
+        ds = None
+        if dataset == "train":
+            ds = DataSet(local_path=config.local_path)
+        elif dataset == "valid":
+            ds = DataSet(local_path=config.path_valid_out)
         ds.load_dataset(config.pids_of_interest)
         X_train, X_test, y_train, y_test = ds.build_train_test_split()
         X = ds.X()
