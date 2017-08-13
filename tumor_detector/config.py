@@ -175,11 +175,10 @@ train_pids_all = first_pids + cbica_pids + tcia_pids
 
 # manually selected patients from the training data sets
 fir_pids_hq = ['Brats17_2013_01_1', 'Brats17_2013_02_1', 'Brats17_2013_03_1', 'Brats17_2013_04_1',
-               'Brats17_2013_07_1', 'Brats17_2013_09_1',
-              'Brats17_2013_10_1', 'Brats17_2013_11_1', 'Brats17_2013_13_1', 'Brats17_2013_14_1',
-              'Brats17_2013_15_1', 'Brats17_2013_16_1', 'Brats17_2013_17_1',
-              'Brats17_2013_21_1', 'Brats17_2013_22_1', 'Brats17_2013_24_1',
-              'Brats17_2013_27_1', 'Brats17_2013_28_1', 'Brats17_2013_29_1']
+               'Brats17_2013_07_1', 'Brats17_2013_09_1', 'Brats17_2013_10_1', 'Brats17_2013_11_1',
+               'Brats17_2013_13_1', 'Brats17_2013_14_1', 'Brats17_2013_15_1', 'Brats17_2013_16_1',
+               'Brats17_2013_17_1', 'Brats17_2013_21_1', 'Brats17_2013_22_1', 'Brats17_2013_24_1',
+               'Brats17_2013_27_1', 'Brats17_2013_28_1', 'Brats17_2013_29_1']
 cbi_pids_hq = ['Brats17_CBICA_AAB_1', 'Brats17_CBICA_AAG_1', 'Brats17_CBICA_AAL_1', 'Brats17_CBICA_AAP_1',
               'Brats17_CBICA_ABB_1', 'Brats17_CBICA_ABE_1', 'Brats17_CBICA_ABM_1', 'Brats17_CBICA_ABN_1',
               'Brats17_CBICA_ABO_1', 'Brats17_CBICA_ABY_1', 'Brats17_CBICA_ALN_1', 'Brats17_CBICA_ALU_1',
@@ -232,20 +231,22 @@ tci_pids_hq = ['Brats17_TCIA_101_1', 'Brats17_TCIA_103_1', 'Brats17_TCIA_105_1',
              'Brats17_TCIA_634_1']
 train_pids_hq = fir_pids_hq + cbi_pids_hq + tci_pids_hq
 
+train_pids_280 = fir_pids_hq + cbica_pids + tcia_pids
+
 # previous test data sets, selected from the training data sets
-# test_pids = ['Brats17_TCIA_372_1', 'Brats17_TCIA_637_1', 'Brats17_CBICA_BFB_1', 'Brats17_TCIA_299_1',
-#              'Brats17_CBICA_ASH_1', 'Brats17_TCIA_430_1', 'Brats17_TCIA_603_1', 'Brats17_TCIA_310_1',
-#              'Brats17_TCIA_109_1', 'Brats17_TCIA_644_1', 'Brats17_CBICA_BHM_1', 'Brats17_TCIA_247_1',
-#              'Brats17_TCIA_394_1', 'Brats17_TCIA_321_1', 'Brats17_CBICA_AAL_1', 'Brats17_TCIA_630_1',
-#              'Brats17_TCIA_184_1', 'Brats17_CBICA_AYI_1', 'Brats17_TCIA_307_1', 'Brats17_TCIA_396_1',
-#              'Brats17_CBICA_BHK_1', 'Brats17_CBICA_AAG_1', 'Brats17_CBICA_AXO_1', 'Brats17_CBICA_AAP_1',
-#              'Brats17_CBICA_AVJ_1', 'Brats17_CBICA_ASN_1', 'Brats17_TCIA_437_1', 'Brats17_TCIA_639_1',
-#              'Brats17_TCIA_338_1', 'Brats17_TCIA_322_1', 'Brats17_TCIA_470_1', 'Brats17_TCIA_222_1',
-#              'Brats17_CBICA_AXW_1', 'Brats17_TCIA_469_1', 'Brats17_TCIA_451_1', 'Brats17_TCIA_420_1',
-#              'Brats17_TCIA_261_1', 'Brats17_CBICA_AQY_1', 'Brats17_CBICA_ASE_1', 'Brats17_TCIA_608_1',
-#              'Brats17_TCIA_653_1', 'Brats17_CBICA_AZD_1', 'Brats17_TCIA_412_1', 'Brats17_CBICA_ABM_1',
-#              'Brats17_CBICA_ATF_1', 'Brats17_CBICA_AAB_1', 'Brats17_TCIA_226_1', 'Brats17_CBICA_AQA_1',
-#              'Brats17_TCIA_218_1', 'Brats17_TCIA_624_1', 'Brats17_TCIA_620_1']
+test_pids = ['Brats17_TCIA_372_1', 'Brats17_TCIA_637_1', 'Brats17_CBICA_BFB_1', 'Brats17_TCIA_299_1',
+             'Brats17_CBICA_ASH_1', 'Brats17_TCIA_430_1', 'Brats17_TCIA_603_1', 'Brats17_TCIA_310_1',
+             'Brats17_TCIA_109_1', 'Brats17_TCIA_644_1', 'Brats17_CBICA_BHM_1', 'Brats17_TCIA_247_1',
+             'Brats17_TCIA_394_1', 'Brats17_TCIA_321_1', 'Brats17_CBICA_AAL_1', 'Brats17_TCIA_630_1',
+             'Brats17_TCIA_184_1', 'Brats17_CBICA_AYI_1', 'Brats17_TCIA_307_1', 'Brats17_TCIA_396_1',
+             'Brats17_CBICA_BHK_1', 'Brats17_CBICA_AAG_1', 'Brats17_CBICA_AXO_1', 'Brats17_CBICA_AAP_1',
+             'Brats17_CBICA_AVJ_1', 'Brats17_CBICA_ASN_1', 'Brats17_TCIA_437_1', 'Brats17_TCIA_639_1',
+             'Brats17_TCIA_338_1', 'Brats17_TCIA_322_1', 'Brats17_TCIA_470_1', 'Brats17_TCIA_222_1',
+             'Brats17_CBICA_AXW_1', 'Brats17_TCIA_469_1', 'Brats17_TCIA_451_1', 'Brats17_TCIA_420_1',
+             'Brats17_TCIA_261_1', 'Brats17_CBICA_AQY_1', 'Brats17_CBICA_ASE_1', 'Brats17_TCIA_608_1',
+             'Brats17_TCIA_653_1', 'Brats17_CBICA_AZD_1', 'Brats17_TCIA_412_1', 'Brats17_CBICA_ABM_1',
+             'Brats17_CBICA_ATF_1', 'Brats17_CBICA_AAB_1', 'Brats17_TCIA_226_1', 'Brats17_CBICA_AQA_1',
+             'Brats17_TCIA_218_1', 'Brats17_TCIA_624_1', 'Brats17_TCIA_620_1']
 
 # test_pids = ['Brats17_TCIA_177_1', 'Brats17_CBICA_AQT_1', 'Brats17_CBICA_ANZ_1', 'Brats17_CBICA_BHM_1',
 #              'Brats17_CBICA_BFB_1', 'Brats17_CBICA_ARW_1', 'Brats17_TCIA_410_1', 'Brats17_TCIA_101_1',
